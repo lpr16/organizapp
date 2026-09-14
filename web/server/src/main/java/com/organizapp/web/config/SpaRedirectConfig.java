@@ -12,6 +12,7 @@ public class SpaRedirectConfig implements WebMvcConfigurer {
         registry.addViewController("/calendar").setViewName("forward:/index.html");
         registry.addViewController("/board").setViewName("forward:/index.html");
         registry.addViewController("/projects").setViewName("forward:/index.html");
+        registry.addViewController("/projects/{id}").setViewName("forward:/index.html");
         registry.addViewController("/seasons").setViewName("forward:/index.html");
         registry.addViewController("/seasons/{id}").setViewName("forward:/index.html");
         registry.addViewController("/diagrams").setViewName("forward:/index.html");

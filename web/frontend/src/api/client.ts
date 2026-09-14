@@ -16,6 +16,7 @@ export const kanbanApi = {
     description?: string;
     priority?: string;
     dueDate?: string;
+    projectId?: string | null;
   }): Promise<TaskCard> {
     const res = await fetch(`${BASE_URL}/tasks`, {
       method: 'POST',
@@ -33,6 +34,7 @@ export const kanbanApi = {
       description?: string;
       priority?: string;
       dueDate?: string;
+      projectId?: string | null;
     }
   ): Promise<TaskCard> {
     const res = await fetch(`${BASE_URL}/tasks/${id}`, {
@@ -63,6 +65,16 @@ export const kanbanApi = {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error('Failed to delete task');
+  },
+
+  async setTaskProject(id: string, projectId: string | null): Promise<TaskCard> {
+    const res = await fetch(`${BASE_URL}/tasks/${id}/project`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId }),
+    });
+    if (!res.ok) throw new Error('Failed to update task project');
+    return res.json();
   },
 
   async createColumn(boardId: string, name: string): Promise<BoardColumn> {

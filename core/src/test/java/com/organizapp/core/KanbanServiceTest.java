@@ -4,8 +4,10 @@ import com.organizapp.core.domain.Board;
 import com.organizapp.core.domain.BoardColumn;
 import com.organizapp.core.domain.BoardLane;
 import com.organizapp.core.domain.Priority;
+import com.organizapp.core.domain.ProjectStatus;
 import com.organizapp.core.domain.TaskCard;
 import com.organizapp.core.service.KanbanService;
+import com.organizapp.core.service.ProjectService;
 import com.organizapp.core.storage.SqliteBoardRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,13 +20,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class KanbanServiceTest {
 
     private KanbanService service;
+    private SqliteBoardRepository repository;
 
     @BeforeEach
     void setUp() {
         // Use a unique in-memory database for each test
         String uniqueDb = "jdbc:sqlite:file:memdb_" + UUID.randomUUID() + "?mode=memory&cache=shared";
-        SqliteBoardRepository repository = new SqliteBoardRepository(uniqueDb);
-        service = new KanbanService(repository);
+        repository = new SqliteBoardRepository(uniqueDb);
+        service = new KanbanService(repository, repository);
     }
 
     @Test
@@ -53,7 +56,8 @@ class KanbanServiceTest {
                 "Implement Drag and Drop",
                 "Use @dnd-kit on React frontend",
                 Priority.URGENT,
-                "2026-09-20"
+                "2026-09-20",
+                null
         );
 
         assertThat(created.id()).isNotBlank();
@@ -70,7 +74,7 @@ class KanbanServiceTest {
         Board board = service.getDefaultBoard();
         String todoColId = board.columns().get(0).id();
 
-        assertThatThrownBy(() -> service.createTask(todoColId, null, "   ", "", Priority.LOW, null))
+        assertThatThrownBy(() -> service.createTask(todoColId, null, "   ", "", Priority.LOW, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("cannot be blank");
     }
@@ -85,7 +89,8 @@ class KanbanServiceTest {
                 "Updated Welcome Title",
                 "New description text",
                 Priority.LOW,
-                "2026-10-01"
+                "2026-10-01",
+                null
         );
 
         assertThat(updated.title()).isEqualTo("Updated Welcome Title");
@@ -171,5 +176,41 @@ class KanbanServiceTest {
         assertThat(moved.laneId()).isEqualTo(extra.id());
         assertThat(updated.lanes()).hasSize(2);
         assertThat(updated.lanes().get(1).name()).isEqualTo("Literature");
+    }
+
+    @Test
+    void shouldAssignProjectWithoutRequiringEveryTaskToHaveOne() {
+        Board board = service.getDefaultBoard();
+        ProjectService projects = new ProjectService(repository, repository);
+        var project = projects.createProject(
+                "Desktop client",
+                "",
+                ProjectStatus.ACTIVE,
+                Priority.HIGH,
+                null,
+                null
+        );
+
+        TaskCard created = service.createTask(
+                board.columns().get(0).id(),
+                board.lanes().get(0).id(),
+                "Sketch window",
+                "",
+                Priority.MEDIUM,
+                null,
+                project.id()
+        );
+        assertThat(created.projectId()).isEqualTo(project.id());
+
+        TaskCard cleared = service.setTaskProject(created.id(), null);
+        assertThat(cleared.projectId()).isNull();
+
+        TaskCard welcome = board.columns().get(0).tasks().get(0);
+        assertThat(welcome.projectId()).isNull();
+
+        service.setTaskProject(welcome.id(), project.id());
+        assertThat(projects.deleteProject(project.id())).isTrue();
+        assertThat(service.getTask(welcome.id()).orElseThrow().projectId()).isNull();
+        assertThat(service.getTask(welcome.id()).orElseThrow().title()).contains("Welcome");
     }
 }

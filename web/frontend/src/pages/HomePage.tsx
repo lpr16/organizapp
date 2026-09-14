@@ -63,6 +63,11 @@ export const HomePage: React.FC = () => {
     .filter((col) => col.name.toLowerCase().includes('done') || col.name.toLowerCase().includes('complete'))
     .reduce((sum, col) => sum + col.tasks.length, 0) || 0;
   const activeProjects = projects.filter((p) => p.status === 'ACTIVE').length;
+  const unassignedTasks =
+    board?.columns.reduce(
+      (sum, column) => sum + column.tasks.filter((task) => !task.projectId).length,
+      0
+    ) ?? 0;
   const month = localMonthIso();
   const monthNet = transactions
     .filter((item) => item.occurredOn.startsWith(month))
@@ -140,7 +145,11 @@ export const HomePage: React.FC = () => {
               <DestinationCard
                 to="/projects"
                 title="Project management"
-                description={`${projects.length} project${projects.length === 1 ? '' : 's'} with status, priority, and due dates.`}
+                description={
+                  projects.length === 0
+                    ? 'A project is a set of tasks. Tasks can stay unassigned.'
+                    : `${projects.length} project${projects.length === 1 ? '' : 's'} · ${unassignedTasks} task${unassignedTasks === 1 ? '' : 's'} not in a project.`
+                }
                 icon={<FolderKanban className="w-5 h-5" />}
                 cta="Open projects"
               />

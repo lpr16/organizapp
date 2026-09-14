@@ -14,8 +14,8 @@ import type {
   DragEndEvent,
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates, arrayMove } from '@dnd-kit/sortable';
-import type { Board, Priority, TaskCard } from '../types/kanban';
-import { kanbanApi } from '../api/client';
+import type { Board, Priority, Project, TaskCard } from '../types/kanban';
+import { kanbanApi, projectApi } from '../api/client';
 import { Header } from '../components/Header';
 import { KanbanBoard } from '../components/KanbanBoard';
 import { TaskModal } from '../components/TaskModal';
@@ -35,6 +35,7 @@ const cellFromId = (id: string): { columnId: string; laneId: string } | null => 
 
 export const BoardPage: React.FC = () => {
   const [board, setBoard] = useState<Board | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,8 +62,9 @@ export const BoardPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await kanbanApi.getBoard();
+      const [data, projectData] = await Promise.all([kanbanApi.getBoard(), projectApi.listProjects()]);
       setBoard(data);
+      setProjects(projectData);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to connect to backend server');
     } finally {
@@ -252,6 +254,7 @@ export const BoardPage: React.FC = () => {
     description: string;
     priority: Priority;
     dueDate?: string;
+    projectId?: string | null;
   }) => {
     if (data.id) {
       const updated = await kanbanApi.updateTask(data.id, {
@@ -259,6 +262,7 @@ export const BoardPage: React.FC = () => {
         description: data.description,
         priority: data.priority,
         dueDate: data.dueDate,
+        projectId: data.projectId,
       });
       const existing = findTask(data.id);
       if (existing && (existing.columnId !== data.columnId || existing.laneId !== data.laneId)) {
@@ -436,6 +440,7 @@ export const BoardPage: React.FC = () => {
           >
             <KanbanBoard
               board={board}
+              projectNames={Object.fromEntries(projects.map((project) => [project.id, project.name]))}
               onAddColumn={() => setIsColumnModalOpen(true)}
               onAddLane={() => setIsLaneModalOpen(true)}
               onRenameColumn={handleRenameColumn}
@@ -450,7 +455,16 @@ export const BoardPage: React.FC = () => {
             <DragOverlay>
               {activeTask ? (
                 <div className="w-72 shadow-2xl opacity-90">
-                  <TaskCardComponent task={activeTask} onEdit={() => {}} onDelete={() => {}} />
+                  <TaskCardComponent
+                    task={activeTask}
+                    projectName={
+                      activeTask.projectId
+                        ? projects.find((project) => project.id === activeTask.projectId)?.name
+                        : null
+                    }
+                    onEdit={() => {}}
+                    onDelete={() => {}}
+                  />
                 </div>
               ) : null}
             </DragOverlay>
@@ -465,6 +479,7 @@ export const BoardPage: React.FC = () => {
         initialTask={editingTask}
         columns={board?.columns || []}
         lanes={board?.lanes || []}
+        projects={projects}
         defaultColumnId={targetColumnId}
         defaultLaneId={targetLaneId}
       />

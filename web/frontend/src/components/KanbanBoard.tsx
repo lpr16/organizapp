@@ -15,6 +15,7 @@ interface Props {
   onRenameLane: (laneId: string, name: string) => Promise<void>;
   onDeleteColumn: (columnId: string) => void;
   onDeleteLane: (laneId: string) => void;
+  projectNames?: Record<string, string>;
   onAddTask: (columnId: string, laneId: string) => void;
   onEditTask: (task: TaskCard) => void;
   onDeleteTask: (id: string) => void;
@@ -31,6 +32,7 @@ export const KanbanBoard: React.FC<Props> = ({
   onRenameLane,
   onDeleteColumn,
   onDeleteLane,
+  projectNames = {},
   onAddTask,
   onEditTask,
   onDeleteTask,
@@ -101,6 +103,7 @@ export const KanbanBoard: React.FC<Props> = ({
                     column={column}
                     lane={lane}
                     tasks={tasksIn(column, lane)}
+                    projectNames={projectNames}
                     onAddTask={onAddTask}
                     onEditTask={onEditTask}
                     onDeleteTask={onDeleteTask}

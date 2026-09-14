@@ -265,7 +265,11 @@ export const SeasonDetailPage: React.FC = () => {
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
-                      <h2 className="text-sm font-semibold text-fg leading-snug">{project.name}</h2>
+                      <h2 className="text-sm font-semibold text-fg leading-snug">
+                        <Link to={`/projects/${project.id}`} className="hover:underline">
+                          {project.name}
+                        </Link>
+                      </h2>
                       {project.description && (
                         <p className="text-sm text-muted leading-relaxed line-clamp-3">{project.description}</p>
                       )}

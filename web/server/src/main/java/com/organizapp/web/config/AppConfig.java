@@ -38,8 +38,10 @@ public class AppConfig {
     }
 
     @Bean
-    public KanbanService kanbanService(BoardRepository boardRepository) {
-        return new KanbanService(boardRepository);
+    public KanbanService kanbanService(
+            BoardRepository boardRepository,
+            ProjectRepository projectRepository) {
+        return new KanbanService(boardRepository, projectRepository);
     }
 
     @Bean

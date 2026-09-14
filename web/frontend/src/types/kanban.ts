@@ -9,6 +9,7 @@ export interface TaskCard {
   priority: Priority;
   position: number;
   dueDate: string | null;
+  projectId: string | null;
   createdAt: string;
   updatedAt: string;
 }

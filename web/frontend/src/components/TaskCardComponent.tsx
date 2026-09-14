@@ -7,6 +7,7 @@ import { ui } from '../theme/ui';
 
 interface Props {
   task: TaskCard;
+  projectName?: string | null;
   onEdit: (task: TaskCard) => void;
   onDelete: (id: string) => void;
 }
@@ -34,7 +35,7 @@ const priorityConfig: Record<Priority, { label: string; tone: string; icon: Reac
   },
 };
 
-export const TaskCardComponent: React.FC<Props> = ({ task, onEdit, onDelete }) => {
+export const TaskCardComponent: React.FC<Props> = ({ task, projectName, onEdit, onDelete }) => {
   const {
     attributes,
     listeners,
@@ -104,6 +105,8 @@ export const TaskCardComponent: React.FC<Props> = ({ task, onEdit, onDelete }) =
       <h4 className="mt-2 text-sm font-medium text-fg leading-snug line-clamp-2">
         {task.title}
       </h4>
+
+      {projectName && <p className="mt-1 text-[11px] text-muted">{projectName}</p>}
 
       {task.description && (
         <p className="mt-1 text-xs text-muted line-clamp-2 leading-relaxed">

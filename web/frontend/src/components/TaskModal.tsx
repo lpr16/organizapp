@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, AlertCircle } from 'lucide-react';
-import type { BoardColumn, BoardLane, Priority, TaskCard } from '../types/kanban';
+import type { BoardColumn, BoardLane, Priority, Project, TaskCard } from '../types/kanban';
 import { ui } from '../theme/ui';
 
 interface Props {
@@ -14,12 +14,15 @@ interface Props {
     description: string;
     priority: Priority;
     dueDate?: string;
+    projectId?: string | null;
   }) => Promise<void>;
   initialTask?: TaskCard | null;
   columns: BoardColumn[];
   lanes: BoardLane[];
+  projects?: Project[];
   defaultColumnId?: string;
   defaultLaneId?: string;
+  defaultProjectId?: string;
 }
 
 export const TaskModal: React.FC<Props> = ({
@@ -29,8 +32,10 @@ export const TaskModal: React.FC<Props> = ({
   initialTask,
   columns,
   lanes,
+  projects = [],
   defaultColumnId,
   defaultLaneId,
+  defaultProjectId,
 }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -38,6 +43,7 @@ export const TaskModal: React.FC<Props> = ({
   const [columnId, setColumnId] = useState('');
   const [laneId, setLaneId] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [projectId, setProjectId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -49,6 +55,7 @@ export const TaskModal: React.FC<Props> = ({
       setColumnId(initialTask.columnId);
       setLaneId(initialTask.laneId);
       setDueDate(initialTask.dueDate || '');
+      setProjectId(initialTask.projectId || '');
     } else {
       setTitle('');
       setDescription('');
@@ -56,9 +63,10 @@ export const TaskModal: React.FC<Props> = ({
       setColumnId(defaultColumnId || (columns.length > 0 ? columns[0].id : ''));
       setLaneId(defaultLaneId || (lanes.length > 0 ? lanes[0].id : ''));
       setDueDate('');
+      setProjectId(defaultProjectId || '');
     }
     setError('');
-  }, [initialTask, defaultColumnId, defaultLaneId, columns, lanes, isOpen]);
+  }, [initialTask, defaultColumnId, defaultLaneId, defaultProjectId, columns, lanes, isOpen]);
 
   if (!isOpen) return null;
 
@@ -88,6 +96,7 @@ export const TaskModal: React.FC<Props> = ({
         description: description.trim(),
         priority,
         dueDate: dueDate ? dueDate : undefined,
+        projectId: projectId || null,
       });
       onClose();
     } catch (err: any) {
@@ -187,6 +196,18 @@ export const TaskModal: React.FC<Props> = ({
                 className={ui.field}
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-fg mb-1.5">Project</label>
+            <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={ui.field}>
+              <option value="">None — not in a project yet</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

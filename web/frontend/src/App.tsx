@@ -4,6 +4,7 @@ import { AppLayout } from './layout/AppLayout';
 import { HomePage } from './pages/HomePage';
 import { BoardPage } from './pages/BoardPage';
 import { ProjectsPage } from './pages/ProjectsPage';
+import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { FinancePage } from './pages/FinancePage';
 import { DiagramsPage } from './pages/DiagramsPage';
 import { DiagramEditorPage } from './pages/DiagramEditorPage';
@@ -19,6 +20,7 @@ export const App: React.FC = () => {
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="board" element={<BoardPage />} />
         <Route path="projects" element={<ProjectsPage />} />
+        <Route path="projects/:id" element={<ProjectDetailPage />} />
         <Route path="seasons" element={<SeasonsPage />} />
         <Route path="seasons/:id" element={<SeasonDetailPage />} />
         <Route path="finance" element={<FinancePage />} />

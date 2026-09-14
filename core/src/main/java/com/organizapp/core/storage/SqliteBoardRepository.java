@@ -103,6 +103,10 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
                     stmt.execute("ALTER TABLE task_cards ADD COLUMN lane_id TEXT");
                 }
 
+                if (!columnExists(conn, "task_cards", "project_id")) {
+                    stmt.execute("ALTER TABLE task_cards ADD COLUMN project_id TEXT");
+                }
+
                 stmt.execute("""
                     CREATE TABLE IF NOT EXISTS seasons (
                         id TEXT PRIMARY KEY,
@@ -360,7 +364,7 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
     private List<TaskCard> getTasksForColumn(Connection conn, String columnId) throws SQLException {
         List<TaskCard> tasks = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(
-                "SELECT id, column_id, lane_id, title, description, priority, position, due_date, created_at, updated_at " +
+                "SELECT id, column_id, lane_id, title, description, priority, position, due_date, project_id, created_at, updated_at " +
                 "FROM task_cards WHERE column_id = ? ORDER BY position ASC")) {
             ps.setString(1, columnId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -382,6 +386,7 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
             Priority.fromString(rs.getString("priority")),
             rs.getInt("position"),
             rs.getString("due_date"),
+            rs.getString("project_id"),
             Instant.parse(rs.getString("created_at")),
             Instant.parse(rs.getString("updated_at"))
         );
@@ -405,8 +410,8 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
 
             TaskCard finalTask = task.withLocation(task.columnId(), task.laneId(), nextPos);
             try (PreparedStatement ps = conn.prepareStatement("""
-                INSERT INTO task_cards (id, column_id, lane_id, title, description, priority, position, due_date, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO task_cards (id, column_id, lane_id, title, description, priority, position, due_date, project_id, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """)) {
                 ps.setString(1, finalTask.id());
                 ps.setString(2, finalTask.columnId());
@@ -416,8 +421,9 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
                 ps.setString(6, finalTask.priority().name());
                 ps.setInt(7, finalTask.position());
                 ps.setString(8, finalTask.dueDate());
-                ps.setString(9, finalTask.createdAt().toString());
-                ps.setString(10, finalTask.updatedAt().toString());
+                ps.setString(9, finalTask.projectId());
+                ps.setString(10, finalTask.createdAt().toString());
+                ps.setString(11, finalTask.updatedAt().toString());
                 ps.executeUpdate();
             }
 
@@ -432,7 +438,7 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
         try {
             Connection conn = getConnection();
             try (PreparedStatement ps = conn.prepareStatement(
-                    "SELECT id, column_id, lane_id, title, description, priority, position, due_date, created_at, updated_at " +
+                    "SELECT id, column_id, lane_id, title, description, priority, position, due_date, project_id, created_at, updated_at " +
                     "FROM task_cards WHERE id = ?")) {
                 ps.setString(1, taskId);
                 try (ResultSet rs = ps.executeQuery()) {
@@ -453,15 +459,16 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
             Connection conn = getConnection();
             try (PreparedStatement ps = conn.prepareStatement("""
                  UPDATE task_cards
-                 SET title = ?, description = ?, priority = ?, due_date = ?, updated_at = ?
+                 SET title = ?, description = ?, priority = ?, due_date = ?, project_id = ?, updated_at = ?
                  WHERE id = ?
              """)) {
                 ps.setString(1, task.title());
                 ps.setString(2, task.description());
                 ps.setString(3, task.priority().name());
                 ps.setString(4, task.dueDate());
-                ps.setString(5, Instant.now().toString());
-                ps.setString(6, task.id());
+                ps.setString(5, task.projectId());
+                ps.setString(6, Instant.now().toString());
+                ps.setString(7, task.id());
                 ps.executeUpdate();
             }
             return getTask(task.id()).orElse(task);
@@ -919,6 +926,11 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
     public synchronized boolean deleteProject(String projectId) {
         try {
             Connection conn = getConnection();
+            try (PreparedStatement unassign = conn.prepareStatement(
+                    "UPDATE task_cards SET project_id = NULL WHERE project_id = ?")) {
+                unassign.setString(1, projectId);
+                unassign.executeUpdate();
+            }
             try (PreparedStatement ps = conn.prepareStatement("DELETE FROM projects WHERE id = ?")) {
                 ps.setString(1, projectId);
                 return ps.executeUpdate() > 0;

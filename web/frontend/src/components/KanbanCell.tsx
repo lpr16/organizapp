@@ -9,6 +9,7 @@ interface Props {
   column: BoardColumn;
   lane: BoardLane;
   tasks: TaskCard[];
+  projectNames?: Record<string, string>;
   onAddTask: (columnId: string, laneId: string) => void;
   onEditTask: (task: TaskCard) => void;
   onDeleteTask: (id: string) => void;
@@ -20,6 +21,7 @@ export const KanbanCell: React.FC<Props> = ({
   column,
   lane,
   tasks,
+  projectNames = {},
   onAddTask,
   onEditTask,
   onDeleteTask,
@@ -39,6 +41,7 @@ export const KanbanCell: React.FC<Props> = ({
           <TaskCardComponent
             key={task.id}
             task={task}
+            projectName={task.projectId ? projectNames[task.projectId] : null}
             onEdit={onEditTask}
             onDelete={onDeleteTask}
           />

@@ -12,6 +12,7 @@ public record TaskCard(
     Priority priority,
     int position,
     String dueDate,
+    String projectId,
     Instant createdAt,
     Instant updatedAt
 ) {
@@ -22,7 +23,8 @@ public record TaskCard(
             String description,
             Priority priority,
             int position,
-            String dueDate) {
+            String dueDate,
+            String projectId) {
         Instant now = Instant.now();
         return new TaskCard(
             UUID.randomUUID().toString(),
@@ -33,12 +35,13 @@ public record TaskCard(
             priority != null ? priority : Priority.MEDIUM,
             position,
             dueDate,
+            projectId,
             now,
             now
         );
     }
 
-    public TaskCard withUpdates(String title, String description, Priority priority, String dueDate) {
+    public TaskCard withUpdates(String title, String description, Priority priority, String dueDate, String projectId) {
         return new TaskCard(
             this.id,
             this.columnId,
@@ -48,6 +51,7 @@ public record TaskCard(
             priority != null ? priority : this.priority,
             this.position,
             dueDate != null ? dueDate : this.dueDate,
+            projectId,
             this.createdAt,
             Instant.now()
         );
@@ -63,6 +67,23 @@ public record TaskCard(
             this.priority,
             position,
             this.dueDate,
+            this.projectId,
+            this.createdAt,
+            Instant.now()
+        );
+    }
+
+    public TaskCard withProject(String projectId) {
+        return new TaskCard(
+            this.id,
+            this.columnId,
+            this.laneId,
+            this.title,
+            this.description,
+            this.priority,
+            this.position,
+            this.dueDate,
+            projectId,
             this.createdAt,
             Instant.now()
         );

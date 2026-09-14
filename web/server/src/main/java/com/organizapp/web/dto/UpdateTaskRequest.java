@@ -6,5 +6,6 @@ public record UpdateTaskRequest(
     @NotBlank(message = "Title is required") String title,
     String description,
     String priority,
-    String dueDate
+    String dueDate,
+    String projectId
 ) {}

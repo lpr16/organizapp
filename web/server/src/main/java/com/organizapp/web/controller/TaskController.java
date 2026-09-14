@@ -5,6 +5,7 @@ import com.organizapp.core.domain.TaskCard;
 import com.organizapp.core.service.KanbanService;
 import com.organizapp.web.dto.CreateTaskRequest;
 import com.organizapp.web.dto.MoveTaskRequest;
+import com.organizapp.web.dto.SetTaskProjectRequest;
 import com.organizapp.web.dto.UpdateTaskRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -29,7 +30,8 @@ public class TaskController {
                 request.title(),
                 request.description(),
                 priority,
-                request.dueDate()
+                request.dueDate(),
+                request.projectId()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
@@ -44,9 +46,17 @@ public class TaskController {
                 request.title(),
                 request.description(),
                 priority,
-                request.dueDate()
+                request.dueDate(),
+                request.projectId()
         );
         return ResponseEntity.ok(updated);
+    }
+
+    @PatchMapping("/{id}/project")
+    public ResponseEntity<TaskCard> setTaskProject(
+            @PathVariable String id,
+            @RequestBody SetTaskProjectRequest request) {
+        return ResponseEntity.ok(kanbanService.setTaskProject(id, request.projectId()));
     }
 
     @PatchMapping("/{id}/move")

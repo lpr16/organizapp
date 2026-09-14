@@ -6,6 +6,7 @@ import com.organizapp.core.domain.BoardLane;
 import com.organizapp.core.domain.Priority;
 import com.organizapp.core.domain.TaskCard;
 import com.organizapp.core.port.BoardRepository;
+import com.organizapp.core.port.ProjectRepository;
 
 import java.util.List;
 import java.util.Objects;
@@ -13,9 +14,11 @@ import java.util.Optional;
 
 public class KanbanService {
     private final BoardRepository repository;
+    private final ProjectRepository projectRepository;
 
-    public KanbanService(BoardRepository repository) {
+    public KanbanService(BoardRepository repository, ProjectRepository projectRepository) {
         this.repository = Objects.requireNonNull(repository, "repository must not be null");
+        this.projectRepository = Objects.requireNonNull(projectRepository, "projectRepository must not be null");
     }
 
     public Board getDefaultBoard() {
@@ -35,15 +38,27 @@ public class KanbanService {
             String title,
             String description,
             Priority priority,
-            String dueDate) {
+            String dueDate,
+            String projectId) {
         if (columnId == null || columnId.isBlank()) {
             throw new IllegalArgumentException("columnId cannot be blank");
         }
         if (title == null || title.isBlank()) {
             throw new IllegalArgumentException("Task title cannot be blank");
         }
+        String assignedProject = trimToNull(projectId);
+        requireProject(assignedProject);
         String resolvedLane = resolveLaneId(laneId);
-        TaskCard card = TaskCard.create(columnId, resolvedLane, title.trim(), description, priority, 0, dueDate);
+        TaskCard card = TaskCard.create(
+                columnId,
+                resolvedLane,
+                title.trim(),
+                description,
+                priority,
+                0,
+                dueDate,
+                assignedProject
+        );
         return repository.createTask(card);
     }
 
@@ -51,17 +66,35 @@ public class KanbanService {
         return repository.getTask(taskId);
     }
 
-    public TaskCard updateTask(String taskId, String title, String description, Priority priority, String dueDate) {
+    public TaskCard updateTask(
+            String taskId,
+            String title,
+            String description,
+            Priority priority,
+            String dueDate,
+            String projectId) {
         TaskCard existing = repository.getTask(taskId)
                 .orElseThrow(() -> new IllegalArgumentException("Task not found with id: " + taskId));
+
+        String assignedProject = trimToNull(projectId);
+        requireProject(assignedProject);
 
         TaskCard updated = existing.withUpdates(
                 title != null ? title.trim() : existing.title(),
                 description != null ? description.trim() : existing.description(),
                 priority != null ? priority : existing.priority(),
-                dueDate != null ? dueDate.trim() : existing.dueDate()
+                dueDate != null ? dueDate.trim() : existing.dueDate(),
+                assignedProject
         );
         return repository.updateTask(updated);
+    }
+
+    public TaskCard setTaskProject(String taskId, String projectId) {
+        TaskCard existing = repository.getTask(taskId)
+                .orElseThrow(() -> new IllegalArgumentException("Task not found with id: " + taskId));
+        String assignedProject = trimToNull(projectId);
+        requireProject(assignedProject);
+        return repository.updateTask(existing.withProject(assignedProject));
     }
 
     public boolean deleteTask(String taskId) {
@@ -133,6 +166,13 @@ public class KanbanService {
                 .orElseThrow(() -> new IllegalArgumentException("Board not found: " + boardId));
     }
 
+    private void requireProject(String projectId) {
+        if (projectId == null) return;
+        if (projectRepository.getProject(projectId).isEmpty()) {
+            throw new IllegalArgumentException("Project not found with id: " + projectId);
+        }
+    }
+
     private String resolveLaneId(String laneId) {
         if (laneId != null && !laneId.isBlank()) {
             return laneId;
@@ -142,5 +182,11 @@ public class KanbanService {
             throw new IllegalArgumentException("Board has no lanes");
         }
         return lanes.get(0).id();
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

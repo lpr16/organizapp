@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Calendar, Edit3, FolderKanban, Loader2, AlertCircle, Plus, Trash2 } from 'lucide-react';
-import { projectApi, seasonApi } from '../api/client';
+import { kanbanApi, projectApi, seasonApi } from '../api/client';
 import { ProjectModal } from '../components/ProjectModal';
-import type { Priority, Project, ProjectStatus, Season } from '../types/kanban';
+import type { Board, Priority, Project, ProjectStatus, Season } from '../types/kanban';
 import { ui } from '../theme/ui';
 
 const statusStyles: Record<ProjectStatus, string> = {
@@ -31,6 +32,7 @@ type Filter = 'ALL' | ProjectStatus;
 export const ProjectsPage: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [seasons, setSeasons] = useState<Season[]>([]);
+  const [board, setBoard] = useState<Board | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('ALL');
@@ -41,12 +43,14 @@ export const ProjectsPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const [projectData, seasonData] = await Promise.all([
+      const [projectData, seasonData, boardData] = await Promise.all([
         projectApi.listProjects(),
         seasonApi.listSeasons(),
+        kanbanApi.getBoard(),
       ]);
       setProjects(projectData);
       setSeasons(seasonData);
+      setBoard(boardData);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load projects');
     } finally {
@@ -68,6 +72,17 @@ export const ProjectsPage: React.FC = () => {
     return (seasonId: string | null) => (seasonId ? map.get(seasonId) ?? 'Season' : null);
   }, [seasons]);
 
+  const taskCount = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const column of board?.columns ?? []) {
+      for (const task of column.tasks) {
+        if (!task.projectId) continue;
+        map.set(task.projectId, (map.get(task.projectId) ?? 0) + 1);
+      }
+    }
+    return map;
+  }, [board]);
+
   const handleSave = async (data: {
     id?: string;
     name: string;
@@ -87,7 +102,7 @@ export const ProjectsPage: React.FC = () => {
   };
 
   const handleDelete = async (project: Project) => {
-    if (!confirm(`Delete project "${project.name}"?`)) return;
+    if (!confirm(`Delete project "${project.name}"? Tasks stay on the board; they become unassigned.`)) return;
     try {
       await projectApi.deleteProject(project.id);
       setProjects((prev) => prev.filter((p) => p.id !== project.id));
@@ -174,7 +189,9 @@ export const ProjectsPage: React.FC = () => {
 
           {!loading && !error && visible.length > 0 && (
             <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {visible.map((project) => (
+              {visible.map((project) => {
+                const count = taskCount.get(project.id) ?? 0;
+                return (
                 <article
                   key={project.id}
                   className={`group flex flex-col gap-3 p-4 ${ui.cardHover}`}
@@ -206,12 +223,18 @@ export const ProjectsPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <h2 className="text-sm font-semibold text-fg leading-snug">{project.name}</h2>
+                  <h2 className="text-sm font-semibold text-fg leading-snug">
+                    <Link to={`/projects/${project.id}`} className="hover:underline">
+                      {project.name}
+                    </Link>
+                  </h2>
                   {project.description && (
                     <p className="text-sm text-muted leading-relaxed line-clamp-3">{project.description}</p>
                   )}
                   <p className="text-[11px] text-muted">
                     {seasonName(project.seasonId) ?? 'Not in a season yet'}
+                    {' · '}
+                    {count === 1 ? '1 task' : `${count} tasks`}
                   </p>
 
                   <div className="mt-auto flex items-center justify-between pt-1 text-[11px]">
@@ -226,7 +249,8 @@ export const ProjectsPage: React.FC = () => {
                     )}
                   </div>
                 </article>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
