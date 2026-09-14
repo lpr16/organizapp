@@ -22,6 +22,7 @@ import { TaskModal } from '../components/TaskModal';
 import { NewColumnModal } from '../components/NewColumnModal';
 import { TaskCardComponent } from '../components/TaskCardComponent';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { ui } from '../theme/ui';
 
 export const BoardPage: React.FC = () => {
   const [board, setBoard] = useState<Board | null>(null);
@@ -275,23 +276,20 @@ export const BoardPage: React.FC = () => {
 
       <main className="flex-1 overflow-x-auto p-6 flex flex-col">
         {loading && (
-          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-slate-400">
-            <Loader2 className="w-7 h-7 animate-spin text-indigo-400" />
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted">
+            <Loader2 className="w-6 h-6 animate-spin" />
             <p className="text-sm font-medium">Loading your Kanban workspace...</p>
           </div>
         )}
 
         {error && (
-          <div className="max-w-md mx-auto my-auto p-6 bg-slate-900 border border-slate-800 rounded-2xl text-center space-y-3">
-            <div className="w-12 h-12 mx-auto rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
-              <AlertCircle className="w-6 h-6" />
+          <div className={`max-w-md mx-auto my-auto p-6 text-center space-y-3 ${ui.card}`}>
+            <div className="w-10 h-10 mx-auto rounded-md bg-danger-bg flex items-center justify-center text-danger-fg">
+              <AlertCircle className="w-5 h-5" />
             </div>
-            <h3 className="font-semibold text-slate-100">Unable to Connect</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">{error}</p>
-            <button
-              onClick={loadBoard}
-              className="px-4 py-2 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition shadow-md shadow-indigo-600/20"
-            >
+            <h3 className="font-semibold text-fg">Unable to Connect</h3>
+            <p className="text-sm text-muted leading-relaxed">{error}</p>
+            <button onClick={loadBoard} className={ui.btnPrimary}>
               Retry Connection
             </button>
           </div>
@@ -319,9 +317,9 @@ export const BoardPage: React.FC = () => {
 
               <button
                 onClick={() => setIsColumnModalOpen(true)}
-                className="w-80 shrink-0 h-32 flex flex-col items-center justify-center gap-2 border border-dashed border-slate-800 hover:border-indigo-500/50 hover:bg-slate-900/30 rounded-2xl text-xs font-medium text-slate-400 hover:text-indigo-400 transition group"
+                className={`w-80 shrink-0 h-32 flex flex-col items-center justify-center gap-2 ${ui.btnDashed}`}
               >
-                <div className="w-8 h-8 rounded-xl bg-slate-900 group-hover:bg-indigo-600/20 flex items-center justify-center text-slate-400 group-hover:text-indigo-400 transition">
+                <div className="w-8 h-8 rounded-md bg-surface border border-border flex items-center justify-center text-muted">
                   +
                 </div>
                 <span>Add another column</span>

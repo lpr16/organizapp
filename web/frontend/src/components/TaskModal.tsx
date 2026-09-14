@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, AlertCircle, Sparkles } from 'lucide-react';
+import { X, AlertCircle } from 'lucide-react';
 import type { BoardColumn, Priority, TaskCard } from '../types/kanban';
+import { ui } from '../theme/ui';
 
 interface Props {
   isOpen: boolean;
@@ -84,57 +85,47 @@ export const TaskModal: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-lg max-h-[90vh] bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-indigo-400" />
-            <h3 className="font-semibold text-slate-100">
-              {initialTask ? 'Edit Task' : 'Create New Task'}
-            </h3>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-200 p-1 rounded-lg hover:bg-slate-800 transition"
-          >
+    <div className={ui.overlay}>
+      <div className={`w-full max-w-lg max-h-[90vh] ${ui.modal}`}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <h3 className="font-semibold text-fg">
+            {initialTask ? 'Edit Task' : 'Create New Task'}
+          </h3>
+          <button onClick={onClose} className={ui.iconBtn}>
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Modal Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
           {error && (
-            <div className="flex items-center gap-2 p-3 text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+            <div className={ui.errorBox}>
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Task Title <span className="text-rose-400">*</span>
+            <label className="block text-xs font-medium text-fg mb-1.5">
+              Task Title <span className="text-danger-fg">*</span>
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g., Set up JavaFX desktop app"
-              className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition"
+              className={ui.field}
               autoFocus
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Column
-              </label>
+              <label className="block text-xs font-medium text-fg mb-1.5">Column</label>
               <select
                 value={columnId}
                 onChange={(e) => setColumnId(e.target.value)}
                 disabled={!!initialTask}
-                className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 disabled:opacity-50"
+                className={ui.field}
               >
                 {columns.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -145,13 +136,11 @@ export const TaskModal: React.FC<Props> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Priority
-              </label>
+              <label className="block text-xs font-medium text-fg mb-1.5">Priority</label>
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as Priority)}
-                className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                className={ui.field}
               >
                 <option value="LOW">Low</option>
                 <option value="MEDIUM">Medium</option>
@@ -162,21 +151,17 @@ export const TaskModal: React.FC<Props> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Due Date
-            </label>
-            <div className="relative">
-              <input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-              />
-            </div>
+            <label className="block text-xs font-medium text-fg mb-1.5">Due Date</label>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className={ui.field}
+            />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1.5">
+            <label className="block text-xs font-medium text-fg mb-1.5">
               Description (Optional)
             </label>
             <textarea
@@ -184,24 +169,15 @@ export const TaskModal: React.FC<Props> = ({
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
               placeholder="Add details, notes, or checklist items..."
-              className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition resize-none"
+              className={`${ui.field} resize-none`}
             />
           </div>
 
-          {/* Modal Footer */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-xl transition"
-            >
+          <div className="flex items-center justify-end gap-2 pt-4 border-t border-border">
+            <button type="button" onClick={onClose} className={ui.btnGhost}>
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-5 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 rounded-xl shadow-md shadow-indigo-600/20 transition"
-            >
+            <button type="submit" disabled={isSubmitting} className={ui.btnPrimary}>
               {isSubmitting ? 'Saving...' : initialTask ? 'Save Changes' : 'Create Task'}
             </button>
           </div>

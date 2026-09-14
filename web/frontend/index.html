@@ -1,10 +1,21 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OrganizApp</title>
+    <script>
+      (function () {
+        try {
+          var allowed = { light: 'light', dark: 'dark', navy: 'dark', beige: 'light' };
+          var t = localStorage.getItem('organizapp.theme');
+          var id = allowed[t] ? t : 'light';
+          document.documentElement.setAttribute('data-theme', id);
+          document.documentElement.style.colorScheme = allowed[id];
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

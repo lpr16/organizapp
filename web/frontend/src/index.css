@@ -1,8 +1,192 @@
 @import "tailwindcss";
 
+/*
+  Semantic tokens. Palettes live in [data-theme] blocks below.
+  Add a theme: copy a block, change the id, register it in src/theme/themes.ts.
+*/
+@theme {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-fg: var(--accent-fg);
+  --color-overlay: var(--overlay);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-fg: var(--danger-fg);
+  --color-badge-urgent: var(--badge-urgent-bg);
+  --color-badge-urgent-fg: var(--badge-urgent-fg);
+  --color-badge-high: var(--badge-high-bg);
+  --color-badge-high-fg: var(--badge-high-fg);
+  --color-badge-medium: var(--badge-medium-bg);
+  --color-badge-medium-fg: var(--badge-medium-fg);
+  --color-badge-low: var(--badge-low-bg);
+  --color-badge-low-fg: var(--badge-low-fg);
+  --color-status-planning: var(--status-planning-bg);
+  --color-status-planning-fg: var(--status-planning-fg);
+  --color-status-active: var(--status-active-bg);
+  --color-status-active-fg: var(--status-active-fg);
+  --color-status-hold: var(--status-hold-bg);
+  --color-status-hold-fg: var(--status-hold-fg);
+  --color-status-done: var(--status-done-bg);
+  --color-status-done-fg: var(--status-done-fg);
+}
+
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+  --canvas: #f4f4f5;
+  --surface: #ffffff;
+  --surface-muted: #f4f4f5;
+  --fg: #18181b;
+  --muted: #52525b;
+  --subtle: #a1a1aa;
+  --border: #e4e4e7;
+  --border-strong: #d4d4d8;
+  --accent: #18181b;
+  --accent-hover: #27272a;
+  --accent-fg: #fafafa;
+  --overlay: rgb(24 24 27 / 0.4);
+  --danger: #b91c1c;
+  --danger-bg: #fef2f2;
+  --danger-fg: #991b1b;
+  --badge-urgent-bg: #fef2f2;
+  --badge-urgent-fg: #991b1b;
+  --badge-high-bg: #fffbeb;
+  --badge-high-fg: #92400e;
+  --badge-medium-bg: #f4f4f5;
+  --badge-medium-fg: #3f3f46;
+  --badge-low-bg: #fafafa;
+  --badge-low-fg: #71717a;
+  --status-planning-bg: #f4f4f5;
+  --status-planning-fg: #3f3f46;
+  --status-active-bg: #eff6ff;
+  --status-active-fg: #1e40af;
+  --status-hold-bg: #fffbeb;
+  --status-hold-fg: #92400e;
+  --status-done-bg: #ecfdf5;
+  --status-done-fg: #065f46;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas: #18181b;
+  --surface: #27272a;
+  --surface-muted: #3f3f46;
+  --fg: #fafafa;
+  --muted: #a1a1aa;
+  --subtle: #71717a;
+  --border: #3f3f46;
+  --border-strong: #52525b;
+  --accent: #fafafa;
+  --accent-hover: #e4e4e7;
+  --accent-fg: #18181b;
+  --overlay: rgb(0 0 0 / 0.55);
+  --danger: #f87171;
+  --danger-bg: #3f1d1d;
+  --danger-fg: #fecaca;
+  --badge-urgent-bg: #3f1d1d;
+  --badge-urgent-fg: #fecaca;
+  --badge-high-bg: #422006;
+  --badge-high-fg: #fde68a;
+  --badge-medium-bg: #3f3f46;
+  --badge-medium-fg: #e4e4e7;
+  --badge-low-bg: #27272a;
+  --badge-low-fg: #a1a1aa;
+  --status-planning-bg: #3f3f46;
+  --status-planning-fg: #e4e4e7;
+  --status-active-bg: #1e3a5f;
+  --status-active-fg: #bfdbfe;
+  --status-hold-bg: #422006;
+  --status-hold-fg: #fde68a;
+  --status-done-bg: #14532d;
+  --status-done-fg: #bbf7d0;
+}
+
+[data-theme="navy"] {
+  color-scheme: dark;
+  --canvas: #0b1220;
+  --surface: #152033;
+  --surface-muted: #1e2d48;
+  --fg: #e8eef7;
+  --muted: #9aadc4;
+  --subtle: #6b8099;
+  --border: #24344c;
+  --border-strong: #3d4f6a;
+  --accent: #c5d4e8;
+  --accent-hover: #dbe6f3;
+  --accent-fg: #0b1220;
+  --overlay: rgb(5 10 20 / 0.6);
+  --danger: #f0a8a8;
+  --danger-bg: #3a1f2a;
+  --danger-fg: #f8d0d0;
+  --badge-urgent-bg: #3a1f2a;
+  --badge-urgent-fg: #f8d0d0;
+  --badge-high-bg: #3a2e18;
+  --badge-high-fg: #ead7a4;
+  --badge-medium-bg: #1e2d48;
+  --badge-medium-fg: #c5d4e8;
+  --badge-low-bg: #152033;
+  --badge-low-fg: #9aadc4;
+  --status-planning-bg: #1e2d48;
+  --status-planning-fg: #c5d4e8;
+  --status-active-bg: #16324f;
+  --status-active-fg: #b9d6f2;
+  --status-hold-bg: #3a2e18;
+  --status-hold-fg: #ead7a4;
+  --status-done-bg: #16382c;
+  --status-done-fg: #b7e0cc;
+}
+
+[data-theme="beige"] {
+  color-scheme: light;
+  --canvas: #f3eee4;
+  --surface: #faf7f0;
+  --surface-muted: #eee6d6;
+  --fg: #3f3a32;
+  --muted: #6f675c;
+  --subtle: #a39b8e;
+  --border: #e0d5c2;
+  --border-strong: #d0c3aa;
+  --accent: #4a4338;
+  --accent-hover: #3a342c;
+  --accent-fg: #faf7f0;
+  --overlay: rgb(63 58 50 / 0.4);
+  --danger: #9f3a32;
+  --danger-bg: #f6e6e2;
+  --danger-fg: #8a2f28;
+  --badge-urgent-bg: #f6e6e2;
+  --badge-urgent-fg: #8a2f28;
+  --badge-high-bg: #f4ead4;
+  --badge-high-fg: #7a5a22;
+  --badge-medium-bg: #eee6d6;
+  --badge-medium-fg: #4a4338;
+  --badge-low-bg: #faf7f0;
+  --badge-low-fg: #6f675c;
+  --status-planning-bg: #eee6d6;
+  --status-planning-fg: #4a4338;
+  --status-active-bg: #e4eadf;
+  --status-active-fg: #3d5344;
+  --status-hold-bg: #f4ead4;
+  --status-hold-fg: #7a5a22;
+  --status-done-bg: #e4eadf;
+  --status-done-fg: #3d5344;
+}
+
 @layer base {
   body {
-    @apply bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/30 selection:text-indigo-200 min-h-screen;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    @apply bg-canvas text-fg antialiased min-h-screen;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+
+  ::selection {
+    background: var(--surface-muted);
+    color: var(--fg);
   }
 }
