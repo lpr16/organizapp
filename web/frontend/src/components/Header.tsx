@@ -7,9 +7,10 @@ interface Props {
   board: Board | null;
   onNewTask: () => void;
   onNewColumn: () => void;
+  onNewLane: () => void;
 }
 
-export const Header: React.FC<Props> = ({ board, onNewTask, onNewColumn }) => {
+export const Header: React.FC<Props> = ({ board, onNewTask, onNewColumn, onNewLane }) => {
   const totalTasks = board?.columns.reduce((sum, col) => sum + col.tasks.length, 0) || 0;
 
   const inProgressTasks = board?.columns
@@ -48,6 +49,9 @@ export const Header: React.FC<Props> = ({ board, onNewTask, onNewColumn }) => {
         </div>
 
         <div className="flex items-center gap-2 self-end sm:self-center">
+          <button onClick={onNewLane} className={ui.btnSecondary}>
+            Add Lane
+          </button>
           <button onClick={onNewColumn} className={ui.btnSecondary}>
             <Columns className="w-3.5 h-3.5 text-muted" />
             Add Column

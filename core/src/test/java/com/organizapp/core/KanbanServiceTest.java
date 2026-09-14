@@ -2,6 +2,7 @@ package com.organizapp.core;
 
 import com.organizapp.core.domain.Board;
 import com.organizapp.core.domain.BoardColumn;
+import com.organizapp.core.domain.BoardLane;
 import com.organizapp.core.domain.Priority;
 import com.organizapp.core.domain.TaskCard;
 import com.organizapp.core.service.KanbanService;
@@ -32,6 +33,8 @@ class KanbanServiceTest {
         assertThat(board).isNotNull();
         assertThat(board.name()).isEqualTo("My Personal Board");
         assertThat(board.columns()).hasSize(3);
+        assertThat(board.lanes()).hasSize(1);
+        assertThat(board.lanes().get(0).name()).isEqualTo("Main");
 
         BoardColumn todoCol = board.columns().get(0);
         assertThat(todoCol.name()).isEqualTo("To Do");
@@ -46,6 +49,7 @@ class KanbanServiceTest {
 
         TaskCard created = service.createTask(
                 todoColId,
+                board.lanes().get(0).id(),
                 "Implement Drag and Drop",
                 "Use @dnd-kit on React frontend",
                 Priority.URGENT,
@@ -66,7 +70,7 @@ class KanbanServiceTest {
         Board board = service.getDefaultBoard();
         String todoColId = board.columns().get(0).id();
 
-        assertThatThrownBy(() -> service.createTask(todoColId, "   ", "", Priority.LOW, null))
+        assertThatThrownBy(() -> service.createTask(todoColId, null, "   ", "", Priority.LOW, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("cannot be blank");
     }
@@ -98,7 +102,7 @@ class KanbanServiceTest {
         TaskCard initialTask = board.columns().get(0).tasks().get(0);
 
         // Move task from To Do to In Progress
-        service.moveTask(initialTask.id(), inProgressColId, 0);
+        service.moveTask(initialTask.id(), inProgressColId, board.lanes().get(0).id(), 0);
 
         Board updatedBoard = service.getDefaultBoard();
         BoardColumn todoCol = updatedBoard.columns().stream().filter(c -> c.id().equals(todoColId)).findFirst().orElseThrow();
@@ -132,5 +136,40 @@ class KanbanServiceTest {
         Board updatedBoard = service.getDefaultBoard();
         assertThat(updatedBoard.columns()).hasSize(4);
         assertThat(updatedBoard.columns().get(3).name()).isEqualTo("Review / QA");
+    }
+
+    @Test
+    void shouldRenameAndReorderColumns() {
+        Board board = service.getDefaultBoard();
+        BoardColumn renamed = service.renameColumn(board.columns().get(0).id(), "Backlog");
+        assertThat(renamed.name()).isEqualTo("Backlog");
+
+        java.util.List<String> reversed = board.columns().reversed().stream().map(BoardColumn::id).toList();
+        service.reorderColumns(board.id(), reversed);
+
+        Board updated = service.getDefaultBoard();
+        assertThat(updated.columns().get(0).id()).isEqualTo(board.columns().get(2).id());
+        assertThat(updated.columns().get(0).name()).isEqualTo("Done");
+        assertThat(updated.columns().get(2).name()).isEqualTo("Backlog");
+    }
+
+    @Test
+    void shouldCreateRenameAndMoveAcrossLanes() {
+        Board board = service.getDefaultBoard();
+        var extra = service.addLane(board.id(), "Research");
+        assertThat(extra.name()).isEqualTo("Research");
+        assertThat(extra.position()).isEqualTo(1);
+
+        BoardLane renamed = service.renameLane(extra.id(), "Literature");
+        assertThat(renamed.name()).isEqualTo("Literature");
+
+        TaskCard welcome = board.columns().get(0).tasks().get(0);
+        service.moveTask(welcome.id(), welcome.columnId(), extra.id(), 0);
+
+        Board updated = service.getDefaultBoard();
+        TaskCard moved = updated.columns().get(0).tasks().get(0);
+        assertThat(moved.laneId()).isEqualTo(extra.id());
+        assertThat(updated.lanes()).hasSize(2);
+        assertThat(updated.lanes().get(1).name()).isEqualTo("Literature");
     }
 }

@@ -6,9 +6,21 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   onAdd: (name: string) => Promise<void>;
+  heading?: string;
+  label?: string;
+  placeholder?: string;
+  submitLabel?: string;
 }
 
-export const NewColumnModal: React.FC<Props> = ({ isOpen, onClose, onAdd }) => {
+export const NewColumnModal: React.FC<Props> = ({
+  isOpen,
+  onClose,
+  onAdd,
+  heading = 'Add New Column',
+  label = 'Column Title',
+  placeholder = 'e.g., Code Review, Backlog, Ideas',
+  submitLabel = 'Add Column',
+}) => {
   const [name, setName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -18,7 +30,7 @@ export const NewColumnModal: React.FC<Props> = ({ isOpen, onClose, onAdd }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      setError('Column name cannot be blank');
+      setError(`${label} cannot be blank`);
       return;
     }
     try {
@@ -28,7 +40,7 @@ export const NewColumnModal: React.FC<Props> = ({ isOpen, onClose, onAdd }) => {
       setName('');
       onClose();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to add column');
+      setError(err instanceof Error ? err.message : 'Failed to add');
     } finally {
       setIsSubmitting(false);
     }
@@ -40,7 +52,7 @@ export const NewColumnModal: React.FC<Props> = ({ isOpen, onClose, onAdd }) => {
         <div className="flex items-center justify-between pb-3 mb-4 border-b border-border">
           <div className="flex items-center gap-2">
             <Columns className="w-4 h-4 text-muted" />
-            <h3 className="font-semibold text-sm text-fg">Add New Column</h3>
+            <h3 className="font-semibold text-sm text-fg">{heading}</h3>
           </div>
           <button onClick={onClose} className={ui.iconBtn}>
             <X className="w-4 h-4" />
@@ -51,12 +63,12 @@ export const NewColumnModal: React.FC<Props> = ({ isOpen, onClose, onAdd }) => {
           {error && <p className={ui.errorBox}>{error}</p>}
 
           <div>
-            <label className="block text-xs font-medium text-fg mb-1.5">Column Title</label>
+            <label className="block text-xs font-medium text-fg mb-1.5">{label}</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Code Review, Backlog, Ideas"
+              placeholder={placeholder}
               className={ui.field}
               autoFocus
             />
@@ -67,7 +79,7 @@ export const NewColumnModal: React.FC<Props> = ({ isOpen, onClose, onAdd }) => {
               Cancel
             </button>
             <button type="submit" disabled={isSubmitting} className={ui.btnPrimary}>
-              {isSubmitting ? 'Adding...' : 'Add Column'}
+              {isSubmitting ? 'Adding...' : submitLabel}
             </button>
           </div>
         </form>

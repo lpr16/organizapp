@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, AlertCircle } from 'lucide-react';
-import type { BoardColumn, Priority, TaskCard } from '../types/kanban';
+import type { BoardColumn, BoardLane, Priority, TaskCard } from '../types/kanban';
 import { ui } from '../theme/ui';
 
 interface Props {
@@ -9,6 +9,7 @@ interface Props {
   onSave: (taskData: {
     id?: string;
     columnId: string;
+    laneId: string;
     title: string;
     description: string;
     priority: Priority;
@@ -16,7 +17,9 @@ interface Props {
   }) => Promise<void>;
   initialTask?: TaskCard | null;
   columns: BoardColumn[];
+  lanes: BoardLane[];
   defaultColumnId?: string;
+  defaultLaneId?: string;
 }
 
 export const TaskModal: React.FC<Props> = ({
@@ -25,12 +28,15 @@ export const TaskModal: React.FC<Props> = ({
   onSave,
   initialTask,
   columns,
+  lanes,
   defaultColumnId,
+  defaultLaneId,
 }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<Priority>('MEDIUM');
   const [columnId, setColumnId] = useState('');
+  const [laneId, setLaneId] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -41,16 +47,18 @@ export const TaskModal: React.FC<Props> = ({
       setDescription(initialTask.description || '');
       setPriority(initialTask.priority);
       setColumnId(initialTask.columnId);
+      setLaneId(initialTask.laneId);
       setDueDate(initialTask.dueDate || '');
     } else {
       setTitle('');
       setDescription('');
       setPriority('MEDIUM');
       setColumnId(defaultColumnId || (columns.length > 0 ? columns[0].id : ''));
+      setLaneId(defaultLaneId || (lanes.length > 0 ? lanes[0].id : ''));
       setDueDate('');
     }
     setError('');
-  }, [initialTask, defaultColumnId, columns, isOpen]);
+  }, [initialTask, defaultColumnId, defaultLaneId, columns, lanes, isOpen]);
 
   if (!isOpen) return null;
 
@@ -64,6 +72,10 @@ export const TaskModal: React.FC<Props> = ({
       setError('Please select a column');
       return;
     }
+    if (!laneId) {
+      setError('Please select a lane');
+      return;
+    }
 
     try {
       setIsSubmitting(true);
@@ -71,6 +83,7 @@ export const TaskModal: React.FC<Props> = ({
       await onSave({
         id: initialTask?.id,
         columnId,
+        laneId,
         title: title.trim(),
         description: description.trim(),
         priority,
@@ -124,7 +137,6 @@ export const TaskModal: React.FC<Props> = ({
               <select
                 value={columnId}
                 onChange={(e) => setColumnId(e.target.value)}
-                disabled={!!initialTask}
                 className={ui.field}
               >
                 {columns.map((c) => (
@@ -135,6 +147,23 @@ export const TaskModal: React.FC<Props> = ({
               </select>
             </div>
 
+            <div>
+              <label className="block text-xs font-medium text-fg mb-1.5">Lane</label>
+              <select
+                value={laneId}
+                onChange={(e) => setLaneId(e.target.value)}
+                className={ui.field}
+              >
+                {lanes.map((lane) => (
+                  <option key={lane.id} value={lane.id}>
+                    {lane.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-fg mb-1.5">Priority</label>
               <select
@@ -148,16 +177,16 @@ export const TaskModal: React.FC<Props> = ({
                 <option value="URGENT">Urgent</option>
               </select>
             </div>
-          </div>
 
-          <div>
-            <label className="block text-xs font-medium text-fg mb-1.5">Due Date</label>
-            <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className={ui.field}
-            />
+            <div>
+              <label className="block text-xs font-medium text-fg mb-1.5">Due Date</label>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className={ui.field}
+              />
+            </div>
           </div>
 
           <div>

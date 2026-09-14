@@ -24,6 +24,8 @@ class BoardControllerTest {
                 .andExpect(jsonPath("$.id").isNotEmpty())
                 .andExpect(jsonPath("$.name").value("My Personal Board"))
                 .andExpect(jsonPath("$.columns").isArray())
-                .andExpect(jsonPath("$.columns[0].name").value("To Do"));
+                .andExpect(jsonPath("$.columns[0].name").value("To Do"))
+                .andExpect(jsonPath("$.lanes").isArray())
+                .andExpect(jsonPath("$.lanes[0].name").value("Main"));
     }
 }

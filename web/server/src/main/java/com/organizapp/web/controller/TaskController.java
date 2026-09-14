@@ -25,6 +25,7 @@ public class TaskController {
         Priority priority = Priority.fromString(request.priority());
         TaskCard created = kanbanService.createTask(
                 request.columnId(),
+                request.laneId(),
                 request.title(),
                 request.description(),
                 priority,
@@ -52,7 +53,7 @@ public class TaskController {
     public ResponseEntity<Void> moveTask(
             @PathVariable String id,
             @Valid @RequestBody MoveTaskRequest request) {
-        kanbanService.moveTask(id, request.targetColumnId(), request.newPosition());
+        kanbanService.moveTask(id, request.targetColumnId(), request.targetLaneId(), request.newPosition());
         return ResponseEntity.noContent().build();
     }
 

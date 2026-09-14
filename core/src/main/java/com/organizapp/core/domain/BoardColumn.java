@@ -18,4 +18,8 @@ public record BoardColumn(
     public BoardColumn withTasks(List<TaskCard> tasks) {
         return new BoardColumn(this.id, this.boardId, this.name, this.position, List.copyOf(tasks));
     }
+
+    public BoardColumn withName(String name) {
+        return new BoardColumn(this.id, this.boardId, name, this.position, this.tasks);
+    }
 }

@@ -3,6 +3,7 @@ export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 export interface TaskCard {
   id: string;
   columnId: string;
+  laneId: string;
   title: string;
   description: string;
   priority: Priority;
@@ -20,11 +21,19 @@ export interface BoardColumn {
   tasks: TaskCard[];
 }
 
+export interface BoardLane {
+  id: string;
+  boardId: string;
+  name: string;
+  position: number;
+}
+
 export interface Board {
   id: string;
   name: string;
   createdAt: string;
   columns: BoardColumn[];
+  lanes: BoardLane[];
 }
 
 export type ProjectStatus = 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED';

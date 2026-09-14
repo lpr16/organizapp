@@ -2,6 +2,7 @@ package com.organizapp.core.storage;
 
 import com.organizapp.core.domain.Board;
 import com.organizapp.core.domain.BoardColumn;
+import com.organizapp.core.domain.BoardLane;
 import com.organizapp.core.domain.Priority;
 import com.organizapp.core.domain.Project;
 import com.organizapp.core.domain.ProjectStatus;
@@ -67,6 +68,16 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
                 """);
 
                 stmt.execute("""
+                    CREATE TABLE IF NOT EXISTS board_lanes (
+                        id TEXT PRIMARY KEY,
+                        board_id TEXT NOT NULL,
+                        name TEXT NOT NULL,
+                        position INTEGER NOT NULL,
+                        FOREIGN KEY(board_id) REFERENCES boards(id) ON DELETE CASCADE
+                    );
+                """);
+
+                stmt.execute("""
                     CREATE TABLE IF NOT EXISTS task_cards (
                         id TEXT PRIMARY KEY,
                         column_id TEXT NOT NULL,
@@ -80,6 +91,10 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
                         FOREIGN KEY(column_id) REFERENCES board_columns(id) ON DELETE CASCADE
                     );
                 """);
+
+                if (!columnExists(conn, "task_cards", "lane_id")) {
+                    stmt.execute("ALTER TABLE task_cards ADD COLUMN lane_id TEXT");
+                }
 
                 stmt.execute("""
                     CREATE TABLE IF NOT EXISTS projects (
@@ -96,6 +111,7 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
             }
 
             seedDefaultBoardIfEmpty(conn);
+            ensureDefaultLanes(conn);
             seedDefaultProjectIfEmpty(conn);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to initialize SQLite database schema", e);
@@ -152,6 +168,74 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
         }
     }
 
+    private boolean columnExists(Connection conn, String table, String column) throws SQLException {
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("PRAGMA table_info(" + table + ")")) {
+            while (rs.next()) {
+                if (column.equalsIgnoreCase(rs.getString("name"))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private void ensureDefaultLanes(Connection conn) throws SQLException {
+        List<String> boardIds = new ArrayList<>();
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT id FROM boards")) {
+            while (rs.next()) {
+                boardIds.add(rs.getString("id"));
+            }
+        }
+
+        for (String boardId : boardIds) {
+            int laneCount = 0;
+            try (PreparedStatement ps = conn.prepareStatement("SELECT COUNT(*) FROM board_lanes WHERE board_id = ?")) {
+                ps.setString(1, boardId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        laneCount = rs.getInt(1);
+                    }
+                }
+            }
+            if (laneCount > 0) {
+                try (PreparedStatement ps = conn.prepareStatement("""
+                    UPDATE task_cards
+                    SET lane_id = (
+                        SELECT id FROM board_lanes WHERE board_id = ? ORDER BY position ASC LIMIT 1
+                    )
+                    WHERE lane_id IS NULL AND column_id IN (SELECT id FROM board_columns WHERE board_id = ?)
+                """)) {
+                    ps.setString(1, boardId);
+                    ps.setString(2, boardId);
+                    ps.executeUpdate();
+                }
+                continue;
+            }
+
+            String laneId = UUID.randomUUID().toString();
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "INSERT INTO board_lanes (id, board_id, name, position) VALUES (?, ?, ?, ?)")) {
+                ps.setString(1, laneId);
+                ps.setString(2, boardId);
+                ps.setString(3, "Main");
+                ps.setInt(4, 0);
+                ps.executeUpdate();
+            }
+            try (PreparedStatement ps = conn.prepareStatement("""
+                UPDATE task_cards
+                SET lane_id = ?
+                WHERE column_id IN (SELECT id FROM board_columns WHERE board_id = ?)
+                  AND (lane_id IS NULL OR lane_id = '')
+            """)) {
+                ps.setString(1, laneId);
+                ps.setString(2, boardId);
+                ps.executeUpdate();
+            }
+        }
+    }
+
     @Override
     public synchronized Board getDefaultBoard() {
         try {
@@ -204,7 +288,23 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
                 }
             }
 
-            return Optional.of(new Board(boardId, boardName, createdAt, columns));
+            List<BoardLane> lanes = new ArrayList<>();
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT id, name, position FROM board_lanes WHERE board_id = ? ORDER BY position ASC")) {
+                ps.setString(1, boardId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        lanes.add(new BoardLane(
+                            rs.getString("id"),
+                            boardId,
+                            rs.getString("name"),
+                            rs.getInt("position")
+                        ));
+                    }
+                }
+            }
+
+            return Optional.of(new Board(boardId, boardName, createdAt, columns, lanes));
         } catch (SQLException e) {
             throw new RuntimeException("Error fetching board " + boardId, e);
         }
@@ -213,26 +313,31 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
     private List<TaskCard> getTasksForColumn(Connection conn, String columnId) throws SQLException {
         List<TaskCard> tasks = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(
-                "SELECT id, column_id, title, description, priority, position, due_date, created_at, updated_at " +
+                "SELECT id, column_id, lane_id, title, description, priority, position, due_date, created_at, updated_at " +
                 "FROM task_cards WHERE column_id = ? ORDER BY position ASC")) {
             ps.setString(1, columnId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    tasks.add(new TaskCard(
-                        rs.getString("id"),
-                        rs.getString("column_id"),
-                        rs.getString("title"),
-                        rs.getString("description"),
-                        Priority.fromString(rs.getString("priority")),
-                        rs.getInt("position"),
-                        rs.getString("due_date"),
-                        Instant.parse(rs.getString("created_at")),
-                        Instant.parse(rs.getString("updated_at"))
-                    ));
+                    tasks.add(mapTask(rs));
                 }
             }
         }
         return tasks;
+    }
+
+    private TaskCard mapTask(ResultSet rs) throws SQLException {
+        return new TaskCard(
+            rs.getString("id"),
+            rs.getString("column_id"),
+            rs.getString("lane_id"),
+            rs.getString("title"),
+            rs.getString("description"),
+            Priority.fromString(rs.getString("priority")),
+            rs.getInt("position"),
+            rs.getString("due_date"),
+            Instant.parse(rs.getString("created_at")),
+            Instant.parse(rs.getString("updated_at"))
+        );
     }
 
     @Override
@@ -241,8 +346,9 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
             Connection conn = getConnection();
             int nextPos = 0;
             try (PreparedStatement ps = conn.prepareStatement(
-                    "SELECT COALESCE(MAX(position), -1) + 1 FROM task_cards WHERE column_id = ?")) {
+                    "SELECT COALESCE(MAX(position), -1) + 1 FROM task_cards WHERE column_id = ? AND lane_id = ?")) {
                 ps.setString(1, task.columnId());
+                ps.setString(2, task.laneId());
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) {
                         nextPos = rs.getInt(1);
@@ -250,20 +356,21 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
                 }
             }
 
-            TaskCard finalTask = task.withLocation(task.columnId(), nextPos);
+            TaskCard finalTask = task.withLocation(task.columnId(), task.laneId(), nextPos);
             try (PreparedStatement ps = conn.prepareStatement("""
-                INSERT INTO task_cards (id, column_id, title, description, priority, position, due_date, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO task_cards (id, column_id, lane_id, title, description, priority, position, due_date, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """)) {
                 ps.setString(1, finalTask.id());
                 ps.setString(2, finalTask.columnId());
-                ps.setString(3, finalTask.title());
-                ps.setString(4, finalTask.description());
-                ps.setString(5, finalTask.priority().name());
-                ps.setInt(6, finalTask.position());
-                ps.setString(7, finalTask.dueDate());
-                ps.setString(8, finalTask.createdAt().toString());
-                ps.setString(9, finalTask.updatedAt().toString());
+                ps.setString(3, finalTask.laneId());
+                ps.setString(4, finalTask.title());
+                ps.setString(5, finalTask.description());
+                ps.setString(6, finalTask.priority().name());
+                ps.setInt(7, finalTask.position());
+                ps.setString(8, finalTask.dueDate());
+                ps.setString(9, finalTask.createdAt().toString());
+                ps.setString(10, finalTask.updatedAt().toString());
                 ps.executeUpdate();
             }
 
@@ -278,22 +385,12 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
         try {
             Connection conn = getConnection();
             try (PreparedStatement ps = conn.prepareStatement(
-                    "SELECT id, column_id, title, description, priority, position, due_date, created_at, updated_at " +
+                    "SELECT id, column_id, lane_id, title, description, priority, position, due_date, created_at, updated_at " +
                     "FROM task_cards WHERE id = ?")) {
                 ps.setString(1, taskId);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) {
-                        return Optional.of(new TaskCard(
-                            rs.getString("id"),
-                            rs.getString("column_id"),
-                            rs.getString("title"),
-                            rs.getString("description"),
-                            Priority.fromString(rs.getString("priority")),
-                            rs.getInt("position"),
-                            rs.getString("due_date"),
-                            Instant.parse(rs.getString("created_at")),
-                            Instant.parse(rs.getString("updated_at"))
-                        ));
+                        return Optional.of(mapTask(rs));
                     }
                 }
             }
@@ -345,9 +442,10 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
                 }
 
                 try (PreparedStatement ps = conn.prepareStatement(
-                        "UPDATE task_cards SET position = position - 1 WHERE column_id = ? AND position > ?")) {
+                        "UPDATE task_cards SET position = position - 1 WHERE column_id = ? AND lane_id = ? AND position > ?")) {
                     ps.setString(1, card.columnId());
-                    ps.setInt(2, card.position());
+                    ps.setString(2, card.laneId());
+                    ps.setInt(3, card.position());
                     ps.executeUpdate();
                 }
 
@@ -365,7 +463,7 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
     }
 
     @Override
-    public synchronized void moveTask(String taskId, String targetColumnId, int newPosition) {
+    public synchronized void moveTask(String taskId, String targetColumnId, String targetLaneId, int newPosition) {
         try {
             Connection conn = getConnection();
             conn.setAutoCommit(false);
@@ -377,9 +475,11 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
                 }
                 TaskCard card = cardOpt.get();
                 String srcColumnId = card.columnId();
+                String srcLaneId = card.laneId();
                 int oldPosition = card.position();
+                boolean sameCell = srcColumnId.equals(targetColumnId) && Objects.equals(srcLaneId, targetLaneId);
 
-                if (srcColumnId.equals(targetColumnId)) {
+                if (sameCell) {
                     if (oldPosition == newPosition) {
                         conn.rollback();
                         return;
@@ -387,46 +487,51 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
                     if (oldPosition < newPosition) {
                         try (PreparedStatement ps = conn.prepareStatement(
                                 "UPDATE task_cards SET position = position - 1 " +
-                                "WHERE column_id = ? AND position > ? AND position <= ?")) {
+                                "WHERE column_id = ? AND lane_id = ? AND position > ? AND position <= ?")) {
                             ps.setString(1, srcColumnId);
-                            ps.setInt(2, oldPosition);
-                            ps.setInt(3, newPosition);
+                            ps.setString(2, srcLaneId);
+                            ps.setInt(3, oldPosition);
+                            ps.setInt(4, newPosition);
                             ps.executeUpdate();
                         }
                     } else {
                         try (PreparedStatement ps = conn.prepareStatement(
                                 "UPDATE task_cards SET position = position + 1 " +
-                                "WHERE column_id = ? AND position >= ? AND position < ?")) {
+                                "WHERE column_id = ? AND lane_id = ? AND position >= ? AND position < ?")) {
                             ps.setString(1, srcColumnId);
-                            ps.setInt(2, newPosition);
-                            ps.setInt(3, oldPosition);
+                            ps.setString(2, srcLaneId);
+                            ps.setInt(3, newPosition);
+                            ps.setInt(4, oldPosition);
                             ps.executeUpdate();
                         }
                     }
                 } else {
                     try (PreparedStatement ps = conn.prepareStatement(
                             "UPDATE task_cards SET position = position - 1 " +
-                            "WHERE column_id = ? AND position > ?")) {
+                            "WHERE column_id = ? AND lane_id = ? AND position > ?")) {
                         ps.setString(1, srcColumnId);
-                        ps.setInt(2, oldPosition);
+                        ps.setString(2, srcLaneId);
+                        ps.setInt(3, oldPosition);
                         ps.executeUpdate();
                     }
 
                     try (PreparedStatement ps = conn.prepareStatement(
                             "UPDATE task_cards SET position = position + 1 " +
-                            "WHERE column_id = ? AND position >= ?")) {
+                            "WHERE column_id = ? AND lane_id = ? AND position >= ?")) {
                         ps.setString(1, targetColumnId);
-                        ps.setInt(2, newPosition);
+                        ps.setString(2, targetLaneId);
+                        ps.setInt(3, newPosition);
                         ps.executeUpdate();
                     }
                 }
 
                 try (PreparedStatement ps = conn.prepareStatement(
-                        "UPDATE task_cards SET column_id = ?, position = ?, updated_at = ? WHERE id = ?")) {
+                        "UPDATE task_cards SET column_id = ?, lane_id = ?, position = ?, updated_at = ? WHERE id = ?")) {
                     ps.setString(1, targetColumnId);
-                    ps.setInt(2, newPosition);
-                    ps.setString(3, Instant.now().toString());
-                    ps.setString(4, taskId);
+                    ps.setString(2, targetLaneId);
+                    ps.setInt(3, newPosition);
+                    ps.setString(4, Instant.now().toString());
+                    ps.setString(5, taskId);
                     ps.executeUpdate();
                 }
 
@@ -465,12 +570,197 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
     public synchronized boolean deleteColumn(String columnId) {
         try {
             Connection conn = getConnection();
+            String boardId = null;
+            try (PreparedStatement ps = conn.prepareStatement("SELECT board_id FROM board_columns WHERE id = ?")) {
+                ps.setString(1, columnId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        boardId = rs.getString("board_id");
+                    }
+                }
+            }
+            if (boardId == null) {
+                return false;
+            }
+            int count = 0;
+            try (PreparedStatement ps = conn.prepareStatement("SELECT COUNT(*) FROM board_columns WHERE board_id = ?")) {
+                ps.setString(1, boardId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        count = rs.getInt(1);
+                    }
+                }
+            }
+            if (count <= 1) {
+                throw new IllegalArgumentException("Cannot delete the last column");
+            }
             try (PreparedStatement ps = conn.prepareStatement("DELETE FROM board_columns WHERE id = ?")) {
                 ps.setString(1, columnId);
                 return ps.executeUpdate() > 0;
             }
         } catch (SQLException e) {
             throw new RuntimeException("Error deleting column " + columnId, e);
+        }
+    }
+
+    @Override
+    public synchronized BoardColumn renameColumn(String columnId, String name) {
+        try {
+            Connection conn = getConnection();
+            try (PreparedStatement ps = conn.prepareStatement("UPDATE board_columns SET name = ? WHERE id = ?")) {
+                ps.setString(1, name);
+                ps.setString(2, columnId);
+                if (ps.executeUpdate() == 0) {
+                    throw new IllegalArgumentException("Column not found: " + columnId);
+                }
+            }
+            Board board = getDefaultBoard();
+            return board.columns().stream()
+                    .filter(c -> c.id().equals(columnId))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Column not found: " + columnId));
+        } catch (SQLException e) {
+            throw new RuntimeException("Error renaming column " + columnId, e);
+        }
+    }
+
+    @Override
+    public synchronized void reorderColumns(String boardId, List<String> orderedIds) {
+        reorderNamedItems("board_columns", boardId, orderedIds, "Column");
+    }
+
+    @Override
+    public synchronized BoardLane createLane(String boardId, String name, int position) {
+        try {
+            Connection conn = getConnection();
+            String laneId = UUID.randomUUID().toString();
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "INSERT INTO board_lanes (id, board_id, name, position) VALUES (?, ?, ?, ?)")) {
+                ps.setString(1, laneId);
+                ps.setString(2, boardId);
+                ps.setString(3, name);
+                ps.setInt(4, position);
+                ps.executeUpdate();
+            }
+            return new BoardLane(laneId, boardId, name, position);
+        } catch (SQLException e) {
+            throw new RuntimeException("Error creating lane", e);
+        }
+    }
+
+    @Override
+    public synchronized BoardLane renameLane(String laneId, String name) {
+        try {
+            Connection conn = getConnection();
+            try (PreparedStatement ps = conn.prepareStatement("UPDATE board_lanes SET name = ? WHERE id = ?")) {
+                ps.setString(1, name);
+                ps.setString(2, laneId);
+                if (ps.executeUpdate() == 0) {
+                    throw new IllegalArgumentException("Lane not found: " + laneId);
+                }
+            }
+            return getDefaultBoard().lanes().stream()
+                    .filter(l -> l.id().equals(laneId))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Lane not found: " + laneId));
+        } catch (SQLException e) {
+            throw new RuntimeException("Error renaming lane " + laneId, e);
+        }
+    }
+
+    @Override
+    public synchronized void reorderLanes(String boardId, List<String> orderedIds) {
+        reorderNamedItems("board_lanes", boardId, orderedIds, "Lane");
+    }
+
+    @Override
+    public synchronized boolean deleteLane(String laneId) {
+        try {
+            Connection conn = getConnection();
+            String boardId = null;
+            try (PreparedStatement ps = conn.prepareStatement("SELECT board_id FROM board_lanes WHERE id = ?")) {
+                ps.setString(1, laneId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        boardId = rs.getString("board_id");
+                    }
+                }
+            }
+            if (boardId == null) {
+                return false;
+            }
+            int count = 0;
+            try (PreparedStatement ps = conn.prepareStatement("SELECT COUNT(*) FROM board_lanes WHERE board_id = ?")) {
+                ps.setString(1, boardId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        count = rs.getInt(1);
+                    }
+                }
+            }
+            if (count <= 1) {
+                throw new IllegalArgumentException("Cannot delete the last lane");
+            }
+            conn.setAutoCommit(false);
+            try {
+                try (PreparedStatement ps = conn.prepareStatement("DELETE FROM task_cards WHERE lane_id = ?")) {
+                    ps.setString(1, laneId);
+                    ps.executeUpdate();
+                }
+                boolean deleted;
+                try (PreparedStatement ps = conn.prepareStatement("DELETE FROM board_lanes WHERE id = ?")) {
+                    ps.setString(1, laneId);
+                    deleted = ps.executeUpdate() > 0;
+                }
+                conn.commit();
+                return deleted;
+            } catch (SQLException ex) {
+                conn.rollback();
+                throw ex;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error deleting lane " + laneId, e);
+        }
+    }
+
+    private void reorderNamedItems(String table, String boardId, List<String> orderedIds, String label) {
+        try {
+            Connection conn = getConnection();
+            List<String> existing = new ArrayList<>();
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT id FROM " + table + " WHERE board_id = ? ORDER BY position ASC")) {
+                ps.setString(1, boardId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        existing.add(rs.getString("id"));
+                    }
+                }
+            }
+            if (existing.size() != orderedIds.size() || !existing.containsAll(orderedIds)) {
+                throw new IllegalArgumentException(label + " order must include every " + label.toLowerCase());
+            }
+            conn.setAutoCommit(false);
+            try {
+                for (int i = 0; i < orderedIds.size(); i++) {
+                    try (PreparedStatement ps = conn.prepareStatement(
+                            "UPDATE " + table + " SET position = ? WHERE id = ? AND board_id = ?")) {
+                        ps.setInt(1, i);
+                        ps.setString(2, orderedIds.get(i));
+                        ps.setString(3, boardId);
+                        ps.executeUpdate();
+                    }
+                }
+                conn.commit();
+            } catch (SQLException ex) {
+                conn.rollback();
+                throw ex;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error reordering " + label.toLowerCase() + "s", e);
         }
     }
 

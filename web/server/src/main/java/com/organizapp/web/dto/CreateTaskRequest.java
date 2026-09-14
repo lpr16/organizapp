@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 
 public record CreateTaskRequest(
     @NotBlank(message = "Column ID is required") String columnId,
+    String laneId,
     @NotBlank(message = "Title is required") String title,
     String description,
     String priority,

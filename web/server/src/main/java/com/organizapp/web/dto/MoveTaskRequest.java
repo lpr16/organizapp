@@ -5,5 +5,6 @@ import jakarta.validation.constraints.NotNull;
 
 public record MoveTaskRequest(
     @NotBlank(message = "Target column ID is required") String targetColumnId,
+    String targetLaneId,
     @NotNull(message = "New position is required") Integer newPosition
 ) {}

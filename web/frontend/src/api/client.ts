@@ -1,4 +1,4 @@
-import type { Board, BoardColumn, Project, TaskCard } from '../types/kanban';
+import type { Board, BoardColumn, BoardLane, Project, TaskCard } from '../types/kanban';
 
 const BASE_URL = '/api';
 
@@ -11,6 +11,7 @@ export const kanbanApi = {
 
   async createTask(data: {
     columnId: string;
+    laneId?: string;
     title: string;
     description?: string;
     priority?: string;
@@ -43,11 +44,16 @@ export const kanbanApi = {
     return res.json();
   },
 
-  async moveTask(id: string, targetColumnId: string, newPosition: number): Promise<void> {
+  async moveTask(
+    id: string,
+    targetColumnId: string,
+    targetLaneId: string,
+    newPosition: number
+  ): Promise<void> {
     const res = await fetch(`${BASE_URL}/tasks/${id}/move`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ targetColumnId, newPosition }),
+      body: JSON.stringify({ targetColumnId, targetLaneId, newPosition }),
     });
     if (!res.ok) throw new Error('Failed to move task');
   },
@@ -69,11 +75,66 @@ export const kanbanApi = {
     return res.json();
   },
 
+  async renameColumn(id: string, name: string): Promise<BoardColumn> {
+    const res = await fetch(`${BASE_URL}/columns/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) throw new Error('Failed to rename column');
+    return res.json();
+  },
+
+  async reorderColumns(boardId: string, columnIds: string[]): Promise<void> {
+    const res = await fetch(`${BASE_URL}/columns/reorder`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ boardId, columnIds }),
+    });
+    if (!res.ok) throw new Error('Failed to reorder columns');
+  },
+
   async deleteColumn(id: string): Promise<void> {
     const res = await fetch(`${BASE_URL}/columns/${id}`, {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error('Failed to delete column');
+  },
+
+  async createLane(boardId: string, name: string): Promise<BoardLane> {
+    const res = await fetch(`${BASE_URL}/lanes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ boardId, name }),
+    });
+    if (!res.ok) throw new Error('Failed to create lane');
+    return res.json();
+  },
+
+  async renameLane(id: string, name: string): Promise<BoardLane> {
+    const res = await fetch(`${BASE_URL}/lanes/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) throw new Error('Failed to rename lane');
+    return res.json();
+  },
+
+  async reorderLanes(boardId: string, laneIds: string[]): Promise<void> {
+    const res = await fetch(`${BASE_URL}/lanes/reorder`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ boardId, laneIds }),
+    });
+    if (!res.ok) throw new Error('Failed to reorder lanes');
+  },
+
+  async deleteLane(id: string): Promise<void> {
+    const res = await fetch(`${BASE_URL}/lanes/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Failed to delete lane');
   },
 };
 
