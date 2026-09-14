@@ -1,11 +1,12 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Layers, Home, Columns3, FolderKanban, Workflow, Wallet } from 'lucide-react';
+import { Layers, Home, Columns3, FolderKanban, Workflow, Wallet, CalendarDays } from 'lucide-react';
 import { ThemeSelect } from '../theme/ThemeSelect';
 import { ui } from '../theme/ui';
 
 const links = [
   { to: '/', label: 'Home', icon: Home, end: true },
+  { to: '/calendar', label: 'Calendar', icon: CalendarDays, end: false },
   { to: '/board', label: 'Kanban', icon: Columns3, end: false },
   { to: '/projects', label: 'Projects', icon: FolderKanban, end: false },
   { to: '/finance', label: 'Finance', icon: Wallet, end: false },
@@ -30,14 +31,15 @@ export const AppNav: React.FC = () => {
                 key={to}
                 to={to}
                 end={end}
+                title={label}
                 className={({ isActive }) =>
-                  `inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium ${
+                  `inline-flex items-center gap-1.5 px-2 xl:px-3 py-1.5 rounded-md text-sm font-medium ${
                     isActive ? ui.navActive : ui.navIdle
                   }`
                 }
               >
                 <Icon className="w-3.5 h-3.5" />
-                {label}
+                <span className="hidden xl:inline">{label}</span>
               </NavLink>
             ))}
           </div>

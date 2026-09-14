@@ -7,12 +7,14 @@ import { ProjectsPage } from './pages/ProjectsPage';
 import { FinancePage } from './pages/FinancePage';
 import { DiagramsPage } from './pages/DiagramsPage';
 import { DiagramEditorPage } from './pages/DiagramEditorPage';
+import { CalendarPage } from './pages/CalendarPage';
 
 export const App: React.FC = () => {
   return (
     <Routes>
       <Route element={<AppLayout />}>
         <Route index element={<HomePage />} />
+        <Route path="calendar" element={<CalendarPage />} />
         <Route path="board" element={<BoardPage />} />
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="finance" element={<FinancePage />} />

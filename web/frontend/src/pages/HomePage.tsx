@@ -10,6 +10,7 @@ import {
   AlertCircle,
   Workflow,
   Wallet,
+  CalendarDays,
 } from 'lucide-react';
 import { diagramApi, financeApi, kanbanApi, projectApi } from '../api/client';
 import type { Board, BpmnDiagram, FinanceTransaction, Project } from '../types/kanban';
@@ -72,8 +73,8 @@ export const HomePage: React.FC = () => {
             Where do you want to work?
           </h1>
           <p className="text-sm text-muted max-w-xl leading-relaxed">
-            OrganizApp keeps a Kanban board, projects, simple BPMN diagrams, and a finance ledger.
-            They all live in the same local SQLite file on this machine.
+            OrganizApp keeps a calendar, Kanban board, projects, simple BPMN diagrams, and a finance
+            ledger. They all live in the same local SQLite file on this machine.
           </p>
         </section>
 
@@ -106,7 +107,14 @@ export const HomePage: React.FC = () => {
               <Stat label="Active projects" value={activeProjects} />
             </div>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <DestinationCard
+                to="/calendar"
+                title="Calendar"
+                description={calendarCopy(board, projects, transactions, month)}
+                icon={<CalendarDays className="w-5 h-5" />}
+                cta="Open calendar"
+              />
               <DestinationCard
                 to="/board"
                 title="Kanban board"
@@ -145,6 +153,26 @@ export const HomePage: React.FC = () => {
       </div>
     </main>
   );
+};
+
+const calendarCopy = (
+  board: Board | null,
+  projects: Project[],
+  transactions: FinanceTransaction[],
+  month: string
+): string => {
+  const taskCount =
+    board?.columns.reduce(
+      (sum, column) => sum + column.tasks.filter((task) => task.dueDate?.startsWith(month)).length,
+      0
+    ) ?? 0;
+  const projectCount = projects.filter((project) => project.dueDate?.startsWith(month)).length;
+  const financeCount = transactions.filter((item) => item.occurredOn.startsWith(month)).length;
+  const total = taskCount + projectCount + financeCount;
+  if (total === 0) {
+    return 'Task due dates, project due dates, and ledger entries on a month grid.';
+  }
+  return `${total} dated item${total === 1 ? '' : 's'} this month.`;
 };
 
 const Stat: React.FC<{ label: string; value: number; icon?: React.ReactNode }> = ({
