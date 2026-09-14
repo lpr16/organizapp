@@ -5,6 +5,7 @@ import com.organizapp.core.port.ProjectRepository;
 import com.organizapp.core.service.KanbanService;
 import com.organizapp.core.service.ProjectService;
 import com.organizapp.core.storage.SqliteBoardRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -12,8 +13,12 @@ import org.springframework.context.annotation.Configuration;
 public class AppConfig {
 
     @Bean(destroyMethod = "close")
-    public SqliteBoardRepository sqliteBoardRepository() {
-        return new SqliteBoardRepository();
+    public SqliteBoardRepository sqliteBoardRepository(
+            @Value("${organizapp.db.url:}") String jdbcUrl) {
+        if (jdbcUrl == null || jdbcUrl.isBlank()) {
+            return new SqliteBoardRepository();
+        }
+        return new SqliteBoardRepository(jdbcUrl);
     }
 
     @Bean
