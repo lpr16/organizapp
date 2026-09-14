@@ -56,3 +56,30 @@ export interface BpmnDiagram {
   createdAt: string;
   updatedAt: string;
 }
+
+export type TransactionType = 'INCOME' | 'EXPENSE';
+
+export interface FinanceTransaction {
+  id: string;
+  occurredOn: string;
+  description: string;
+  amountCents: number;
+  type: TransactionType;
+  category: string;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const FINANCE_CATEGORIES = [
+  'Housing',
+  'Food',
+  'Transport',
+  'Health',
+  'Utilities',
+  'Research',
+  'Work',
+  'Leisure',
+  'Income',
+  'Other',
+] as const;

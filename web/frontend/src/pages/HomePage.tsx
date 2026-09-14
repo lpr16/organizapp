@@ -9,15 +9,18 @@ import {
   Loader2,
   AlertCircle,
   Workflow,
+  Wallet,
 } from 'lucide-react';
-import { diagramApi, kanbanApi, projectApi } from '../api/client';
-import type { Board, BpmnDiagram, Project } from '../types/kanban';
+import { diagramApi, financeApi, kanbanApi, projectApi } from '../api/client';
+import type { Board, BpmnDiagram, FinanceTransaction, Project } from '../types/kanban';
+import { formatCents, localMonthIso } from '../finance/money';
 import { ui } from '../theme/ui';
 
 export const HomePage: React.FC = () => {
   const [board, setBoard] = useState<Board | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [diagrams, setDiagrams] = useState<BpmnDiagram[]>([]);
+  const [transactions, setTransactions] = useState<FinanceTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,14 +28,16 @@ export const HomePage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const [boardData, projectData, diagramData] = await Promise.all([
+      const [boardData, projectData, diagramData, financeData] = await Promise.all([
         kanbanApi.getBoard(),
         projectApi.listProjects(),
         diagramApi.listDiagrams(),
+        financeApi.listTransactions(),
       ]);
       setBoard(boardData);
       setProjects(projectData);
       setDiagrams(diagramData);
+      setTransactions(financeData);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to load workspace';
       setError(message);
@@ -53,6 +58,10 @@ export const HomePage: React.FC = () => {
     .filter((col) => col.name.toLowerCase().includes('done') || col.name.toLowerCase().includes('complete'))
     .reduce((sum, col) => sum + col.tasks.length, 0) || 0;
   const activeProjects = projects.filter((p) => p.status === 'ACTIVE').length;
+  const month = localMonthIso();
+  const monthNet = transactions
+    .filter((item) => item.occurredOn.startsWith(month))
+    .reduce((sum, item) => sum + (item.type === 'INCOME' ? item.amountCents : -item.amountCents), 0);
 
   return (
     <main className="flex-1 px-6 py-10">
@@ -63,7 +72,7 @@ export const HomePage: React.FC = () => {
             Where do you want to work?
           </h1>
           <p className="text-sm text-muted max-w-xl leading-relaxed">
-            OrganizApp keeps a Kanban board, a project list, and simple BPMN diagrams.
+            OrganizApp keeps a Kanban board, projects, simple BPMN diagrams, and a finance ledger.
             They all live in the same local SQLite file on this machine.
           </p>
         </section>
@@ -97,7 +106,7 @@ export const HomePage: React.FC = () => {
               <Stat label="Active projects" value={activeProjects} />
             </div>
 
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <DestinationCard
                 to="/board"
                 title="Kanban board"
@@ -111,6 +120,17 @@ export const HomePage: React.FC = () => {
                 description={`${projects.length} project${projects.length === 1 ? '' : 's'} with status, priority, and due dates.`}
                 icon={<FolderKanban className="w-5 h-5" />}
                 cta="Open projects"
+              />
+              <DestinationCard
+                to="/finance"
+                title="Finance"
+                description={
+                  transactions.length === 0
+                    ? 'Track income and expenses by category.'
+                    : `This month net ${monthNet < 0 ? '−' : monthNet > 0 ? '+' : ''}${formatCents(Math.abs(monthNet))} across ${transactions.length} transaction${transactions.length === 1 ? '' : 's'}.`
+                }
+                icon={<Wallet className="w-5 h-5" />}
+                cta="Open ledger"
               />
               <DestinationCard
                 to="/diagrams"

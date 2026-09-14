@@ -2,8 +2,10 @@ package com.organizapp.web.config;
 
 import com.organizapp.core.port.BoardRepository;
 import com.organizapp.core.port.DiagramRepository;
+import com.organizapp.core.port.FinanceRepository;
 import com.organizapp.core.port.ProjectRepository;
 import com.organizapp.core.service.DiagramService;
+import com.organizapp.core.service.FinanceService;
 import com.organizapp.core.service.KanbanService;
 import com.organizapp.core.service.ProjectService;
 import com.organizapp.core.storage.SqliteBoardRepository;
@@ -51,5 +53,15 @@ public class AppConfig {
     @Bean
     public DiagramService diagramService(DiagramRepository diagramRepository) {
         return new DiagramService(diagramRepository);
+    }
+
+    @Bean
+    public FinanceRepository financeRepository(SqliteBoardRepository sqliteBoardRepository) {
+        return sqliteBoardRepository;
+    }
+
+    @Bean
+    public FinanceService financeService(FinanceRepository financeRepository) {
+        return new FinanceService(financeRepository);
     }
 }

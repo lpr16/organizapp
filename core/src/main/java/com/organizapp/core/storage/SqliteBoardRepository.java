@@ -4,12 +4,15 @@ import com.organizapp.core.domain.Board;
 import com.organizapp.core.domain.BoardColumn;
 import com.organizapp.core.domain.BoardLane;
 import com.organizapp.core.domain.BpmnDiagram;
+import com.organizapp.core.domain.FinanceTransaction;
 import com.organizapp.core.domain.Priority;
 import com.organizapp.core.domain.Project;
 import com.organizapp.core.domain.ProjectStatus;
 import com.organizapp.core.domain.TaskCard;
+import com.organizapp.core.domain.TransactionType;
 import com.organizapp.core.port.BoardRepository;
 import com.organizapp.core.port.DiagramRepository;
+import com.organizapp.core.port.FinanceRepository;
 import com.organizapp.core.port.ProjectRepository;
 
 import java.io.File;
@@ -17,7 +20,7 @@ import java.sql.*;
 import java.time.Instant;
 import java.util.*;
 
-public class SqliteBoardRepository implements BoardRepository, ProjectRepository, DiagramRepository, AutoCloseable {
+public class SqliteBoardRepository implements BoardRepository, ProjectRepository, DiagramRepository, FinanceRepository, AutoCloseable {
     private final String jdbcUrl;
     private Connection connection;
 
@@ -116,6 +119,20 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
                         id TEXT PRIMARY KEY,
                         name TEXT NOT NULL,
                         xml TEXT NOT NULL,
+                        created_at TEXT NOT NULL,
+                        updated_at TEXT NOT NULL
+                    );
+                """);
+
+                stmt.execute("""
+                    CREATE TABLE IF NOT EXISTS finance_transactions (
+                        id TEXT PRIMARY KEY,
+                        occurred_on TEXT NOT NULL,
+                        description TEXT NOT NULL,
+                        amount_cents INTEGER NOT NULL,
+                        type TEXT NOT NULL,
+                        category TEXT NOT NULL,
+                        notes TEXT,
                         created_at TEXT NOT NULL,
                         updated_at TEXT NOT NULL
                     );
@@ -1019,6 +1036,123 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
             rs.getString("id"),
             rs.getString("name"),
             rs.getString("xml"),
+            Instant.parse(rs.getString("created_at")),
+            Instant.parse(rs.getString("updated_at"))
+        );
+    }
+
+    @Override
+    public synchronized List<FinanceTransaction> listTransactions() {
+        try {
+            Connection conn = getConnection();
+            List<FinanceTransaction> transactions = new ArrayList<>();
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery(
+                         "SELECT id, occurred_on, description, amount_cents, type, category, notes, created_at, updated_at " +
+                         "FROM finance_transactions ORDER BY occurred_on DESC, created_at DESC")) {
+                while (rs.next()) {
+                    transactions.add(mapTransaction(rs));
+                }
+            }
+            return transactions;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error listing finance transactions", e);
+        }
+    }
+
+    @Override
+    public synchronized Optional<FinanceTransaction> getTransaction(String transactionId) {
+        try {
+            Connection conn = getConnection();
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT id, occurred_on, description, amount_cents, type, category, notes, created_at, updated_at " +
+                    "FROM finance_transactions WHERE id = ?")) {
+                ps.setString(1, transactionId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        return Optional.of(mapTransaction(rs));
+                    }
+                }
+            }
+            return Optional.empty();
+        } catch (SQLException e) {
+            throw new RuntimeException("Error fetching finance transaction " + transactionId, e);
+        }
+    }
+
+    @Override
+    public synchronized FinanceTransaction createTransaction(FinanceTransaction transaction) {
+        try {
+            Connection conn = getConnection();
+            try (PreparedStatement ps = conn.prepareStatement("""
+                INSERT INTO finance_transactions
+                    (id, occurred_on, description, amount_cents, type, category, notes, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """)) {
+                ps.setString(1, transaction.id());
+                ps.setString(2, transaction.occurredOn());
+                ps.setString(3, transaction.description());
+                ps.setLong(4, transaction.amountCents());
+                ps.setString(5, transaction.type().name());
+                ps.setString(6, transaction.category());
+                ps.setString(7, transaction.notes());
+                ps.setString(8, transaction.createdAt().toString());
+                ps.setString(9, transaction.updatedAt().toString());
+                ps.executeUpdate();
+            }
+            return transaction;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error creating finance transaction", e);
+        }
+    }
+
+    @Override
+    public synchronized FinanceTransaction updateTransaction(FinanceTransaction transaction) {
+        try {
+            Connection conn = getConnection();
+            try (PreparedStatement ps = conn.prepareStatement("""
+                UPDATE finance_transactions
+                SET occurred_on = ?, description = ?, amount_cents = ?, type = ?, category = ?, notes = ?, updated_at = ?
+                WHERE id = ?
+            """)) {
+                ps.setString(1, transaction.occurredOn());
+                ps.setString(2, transaction.description());
+                ps.setLong(3, transaction.amountCents());
+                ps.setString(4, transaction.type().name());
+                ps.setString(5, transaction.category());
+                ps.setString(6, transaction.notes());
+                ps.setString(7, Instant.now().toString());
+                ps.setString(8, transaction.id());
+                ps.executeUpdate();
+            }
+            return getTransaction(transaction.id()).orElse(transaction);
+        } catch (SQLException e) {
+            throw new RuntimeException("Error updating finance transaction " + transaction.id(), e);
+        }
+    }
+
+    @Override
+    public synchronized boolean deleteTransaction(String transactionId) {
+        try {
+            Connection conn = getConnection();
+            try (PreparedStatement ps = conn.prepareStatement("DELETE FROM finance_transactions WHERE id = ?")) {
+                ps.setString(1, transactionId);
+                return ps.executeUpdate() > 0;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error deleting finance transaction " + transactionId, e);
+        }
+    }
+
+    private FinanceTransaction mapTransaction(ResultSet rs) throws SQLException {
+        return new FinanceTransaction(
+            rs.getString("id"),
+            rs.getString("occurred_on"),
+            rs.getString("description"),
+            rs.getLong("amount_cents"),
+            TransactionType.fromString(rs.getString("type")),
+            rs.getString("category"),
+            rs.getString("notes") != null ? rs.getString("notes") : "",
             Instant.parse(rs.getString("created_at")),
             Instant.parse(rs.getString("updated_at"))
         );

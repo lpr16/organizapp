@@ -1,4 +1,4 @@
-import type { Board, BoardColumn, BoardLane, BpmnDiagram, Project, TaskCard } from '../types/kanban';
+import type { Board, BoardColumn, BoardLane, BpmnDiagram, FinanceTransaction, Project, TaskCard } from '../types/kanban';
 
 const BASE_URL = '/api';
 
@@ -226,5 +226,57 @@ export const diagramApi = {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error('Failed to delete diagram');
+  },
+};
+
+export const financeApi = {
+  async listTransactions(): Promise<FinanceTransaction[]> {
+    const res = await fetch(`${BASE_URL}/finance/transactions`);
+    if (!res.ok) throw new Error('Failed to load transactions');
+    return res.json();
+  },
+
+  async createTransaction(data: {
+    occurredOn: string;
+    description: string;
+    amountCents: number;
+    type: string;
+    category?: string;
+    notes?: string;
+  }): Promise<FinanceTransaction> {
+    const res = await fetch(`${BASE_URL}/finance/transactions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to create transaction');
+    return res.json();
+  },
+
+  async updateTransaction(
+    id: string,
+    data: {
+      occurredOn: string;
+      description: string;
+      amountCents: number;
+      type: string;
+      category?: string;
+      notes?: string;
+    }
+  ): Promise<FinanceTransaction> {
+    const res = await fetch(`${BASE_URL}/finance/transactions/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to update transaction');
+    return res.json();
+  },
+
+  async deleteTransaction(id: string): Promise<void> {
+    const res = await fetch(`${BASE_URL}/finance/transactions/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Failed to delete transaction');
   },
 };
