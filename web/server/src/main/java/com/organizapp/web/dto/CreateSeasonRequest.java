@@ -2,11 +2,9 @@ package com.organizapp.web.dto;
 
 import jakarta.validation.constraints.NotBlank;
 
-public record UpdateProjectRequest(
+public record CreateSeasonRequest(
     @NotBlank(message = "Name is required") String name,
-    String description,
-    String status,
-    String priority,
-    String dueDate,
-    String seasonId
+    String notes,
+    @NotBlank(message = "Start date is required") String startsOn,
+    String endsOn
 ) {}

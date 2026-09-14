@@ -5,6 +5,7 @@ import com.organizapp.core.domain.Project;
 import com.organizapp.core.domain.ProjectStatus;
 import com.organizapp.core.service.ProjectService;
 import com.organizapp.web.dto.CreateProjectRequest;
+import com.organizapp.web.dto.SetProjectSeasonRequest;
 import com.organizapp.web.dto.UpdateProjectRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -41,7 +42,8 @@ public class ProjectController {
                 request.description(),
                 ProjectStatus.fromString(request.status()),
                 Priority.fromString(request.priority()),
-                request.dueDate()
+                request.dueDate(),
+                request.seasonId()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
@@ -56,9 +58,17 @@ public class ProjectController {
                 request.description(),
                 ProjectStatus.fromString(request.status()),
                 Priority.fromString(request.priority()),
-                request.dueDate()
+                request.dueDate(),
+                request.seasonId()
         );
         return ResponseEntity.ok(updated);
+    }
+
+    @PatchMapping("/{id}/season")
+    public ResponseEntity<Project> setProjectSeason(
+            @PathVariable String id,
+            @RequestBody SetProjectSeasonRequest request) {
+        return ResponseEntity.ok(projectService.setProjectSeason(id, request.seasonId()));
     }
 
     @DeleteMapping("/{id}")

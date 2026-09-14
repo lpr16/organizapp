@@ -1,4 +1,4 @@
-import type { Board, BoardColumn, BoardLane, BpmnDiagram, FinanceTransaction, Project, TaskCard } from '../types/kanban';
+import type { Board, BoardColumn, BoardLane, BpmnDiagram, FinanceTransaction, Project, Season, TaskCard } from '../types/kanban';
 
 const BASE_URL = '/api';
 
@@ -151,6 +151,7 @@ export const projectApi = {
     status?: string;
     priority?: string;
     dueDate?: string;
+    seasonId?: string | null;
   }): Promise<Project> {
     const res = await fetch(`${BASE_URL}/projects`, {
       method: 'POST',
@@ -169,6 +170,7 @@ export const projectApi = {
       status?: string;
       priority?: string;
       dueDate?: string;
+      seasonId?: string | null;
     }
   ): Promise<Project> {
     const res = await fetch(`${BASE_URL}/projects/${id}`, {
@@ -185,6 +187,70 @@ export const projectApi = {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error('Failed to delete project');
+  },
+
+  async setProjectSeason(id: string, seasonId: string | null): Promise<Project> {
+    const res = await fetch(`${BASE_URL}/projects/${id}/season`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ seasonId }),
+    });
+    if (!res.ok) throw new Error('Failed to update project season');
+    return res.json();
+  },
+};
+
+export const seasonApi = {
+  async listSeasons(): Promise<Season[]> {
+    const res = await fetch(`${BASE_URL}/seasons`);
+    if (!res.ok) throw new Error('Failed to load seasons');
+    return res.json();
+  },
+
+  async getSeason(id: string): Promise<Season> {
+    const res = await fetch(`${BASE_URL}/seasons/${id}`);
+    if (!res.ok) throw new Error('Failed to load season');
+    return res.json();
+  },
+
+  async createSeason(data: {
+    name: string;
+    notes?: string;
+    startsOn: string;
+    endsOn?: string | null;
+  }): Promise<Season> {
+    const res = await fetch(`${BASE_URL}/seasons`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to create season');
+    return res.json();
+  },
+
+  async updateSeason(
+    id: string,
+    data: {
+      name: string;
+      notes?: string;
+      startsOn: string;
+      endsOn?: string | null;
+    }
+  ): Promise<Season> {
+    const res = await fetch(`${BASE_URL}/seasons/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to update season');
+    return res.json();
+  },
+
+  async deleteSeason(id: string): Promise<void> {
+    const res = await fetch(`${BASE_URL}/seasons/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Failed to delete season');
   },
 };
 

@@ -11,15 +11,17 @@ import {
   Workflow,
   Wallet,
   CalendarDays,
+  Leaf,
 } from 'lucide-react';
-import { diagramApi, financeApi, kanbanApi, projectApi } from '../api/client';
-import type { Board, BpmnDiagram, FinanceTransaction, Project } from '../types/kanban';
+import { diagramApi, financeApi, kanbanApi, projectApi, seasonApi } from '../api/client';
+import type { Board, BpmnDiagram, FinanceTransaction, Project, Season } from '../types/kanban';
 import { formatCents, localMonthIso } from '../finance/money';
 import { ui } from '../theme/ui';
 
 export const HomePage: React.FC = () => {
   const [board, setBoard] = useState<Board | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [seasons, setSeasons] = useState<Season[]>([]);
   const [diagrams, setDiagrams] = useState<BpmnDiagram[]>([]);
   const [transactions, setTransactions] = useState<FinanceTransaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,14 +31,16 @@ export const HomePage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const [boardData, projectData, diagramData, financeData] = await Promise.all([
+      const [boardData, projectData, seasonData, diagramData, financeData] = await Promise.all([
         kanbanApi.getBoard(),
         projectApi.listProjects(),
+        seasonApi.listSeasons(),
         diagramApi.listDiagrams(),
         financeApi.listTransactions(),
       ]);
       setBoard(boardData);
       setProjects(projectData);
+      setSeasons(seasonData);
       setDiagrams(diagramData);
       setTransactions(financeData);
     } catch (err: unknown) {
@@ -73,7 +77,7 @@ export const HomePage: React.FC = () => {
             Where do you want to work?
           </h1>
           <p className="text-sm text-muted max-w-xl leading-relaxed">
-            OrganizApp keeps a calendar, Kanban board, projects, simple BPMN diagrams, and a finance
+            OrganizApp keeps a calendar, Kanban board, seasons, projects, simple BPMN diagrams, and a finance
             ledger. They all live in the same local SQLite file on this machine.
           </p>
         </section>
@@ -121,6 +125,17 @@ export const HomePage: React.FC = () => {
                 description={`Move cards across ${board?.columns.length ?? 0} columns on ${board?.name ?? 'your board'}.`}
                 icon={<Columns3 className="w-5 h-5" />}
                 cta="Open board"
+              />
+              <DestinationCard
+                to="/seasons"
+                title="Seasons"
+                description={
+                  seasons.length === 0
+                    ? 'Group projects into a stretch of work. Projects can stay unassigned.'
+                    : `${seasons.length} season${seasons.length === 1 ? '' : 's'} · ${projects.filter((project) => !project.seasonId).length} project${projects.filter((project) => !project.seasonId).length === 1 ? '' : 's'} not in a season.`
+                }
+                icon={<Leaf className="w-5 h-5" />}
+                cta="Open seasons"
               />
               <DestinationCard
                 to="/projects"

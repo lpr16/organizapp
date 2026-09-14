@@ -7,5 +7,6 @@ public record CreateProjectRequest(
     String description,
     String status,
     String priority,
-    String dueDate
+    String dueDate,
+    String seasonId
 ) {}

@@ -8,19 +8,21 @@ import com.organizapp.core.domain.FinanceTransaction;
 import com.organizapp.core.domain.Priority;
 import com.organizapp.core.domain.Project;
 import com.organizapp.core.domain.ProjectStatus;
+import com.organizapp.core.domain.Season;
 import com.organizapp.core.domain.TaskCard;
 import com.organizapp.core.domain.TransactionType;
 import com.organizapp.core.port.BoardRepository;
 import com.organizapp.core.port.DiagramRepository;
 import com.organizapp.core.port.FinanceRepository;
 import com.organizapp.core.port.ProjectRepository;
+import com.organizapp.core.port.SeasonRepository;
 
 import java.io.File;
 import java.sql.*;
 import java.time.Instant;
 import java.util.*;
 
-public class SqliteBoardRepository implements BoardRepository, ProjectRepository, DiagramRepository, FinanceRepository, AutoCloseable {
+public class SqliteBoardRepository implements BoardRepository, ProjectRepository, SeasonRepository, DiagramRepository, FinanceRepository, AutoCloseable {
     private final String jdbcUrl;
     private Connection connection;
 
@@ -102,6 +104,18 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
                 }
 
                 stmt.execute("""
+                    CREATE TABLE IF NOT EXISTS seasons (
+                        id TEXT PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        notes TEXT,
+                        starts_on TEXT NOT NULL,
+                        ends_on TEXT,
+                        created_at TEXT NOT NULL,
+                        updated_at TEXT NOT NULL
+                    );
+                """);
+
+                stmt.execute("""
                     CREATE TABLE IF NOT EXISTS projects (
                         id TEXT PRIMARY KEY,
                         name TEXT NOT NULL,
@@ -113,6 +127,10 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
                         updated_at TEXT NOT NULL
                     );
                 """);
+
+                if (!columnExists(conn, "projects", "season_id")) {
+                    stmt.execute("ALTER TABLE projects ADD COLUMN season_id TEXT");
+                }
 
                 stmt.execute("""
                     CREATE TABLE IF NOT EXISTS bpmn_diagrams (
@@ -823,7 +841,7 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
             List<Project> projects = new ArrayList<>();
             try (Statement stmt = conn.createStatement();
                  ResultSet rs = stmt.executeQuery(
-                         "SELECT id, name, description, status, priority, due_date, created_at, updated_at " +
+                         "SELECT id, name, description, status, priority, due_date, season_id, created_at, updated_at " +
                          "FROM projects ORDER BY created_at ASC")) {
                 while (rs.next()) {
                     projects.add(mapProject(rs));
@@ -840,7 +858,7 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
         try {
             Connection conn = getConnection();
             try (PreparedStatement ps = conn.prepareStatement(
-                    "SELECT id, name, description, status, priority, due_date, created_at, updated_at " +
+                    "SELECT id, name, description, status, priority, due_date, season_id, created_at, updated_at " +
                     "FROM projects WHERE id = ?")) {
                 ps.setString(1, projectId);
                 try (ResultSet rs = ps.executeQuery()) {
@@ -860,8 +878,8 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
         try {
             Connection conn = getConnection();
             try (PreparedStatement ps = conn.prepareStatement("""
-                INSERT INTO projects (id, name, description, status, priority, due_date, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO projects (id, name, description, status, priority, due_date, season_id, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """)) {
                 bindProject(ps, project);
                 ps.executeUpdate();
@@ -878,7 +896,7 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
             Connection conn = getConnection();
             try (PreparedStatement ps = conn.prepareStatement("""
                 UPDATE projects
-                SET name = ?, description = ?, status = ?, priority = ?, due_date = ?, updated_at = ?
+                SET name = ?, description = ?, status = ?, priority = ?, due_date = ?, season_id = ?, updated_at = ?
                 WHERE id = ?
             """)) {
                 ps.setString(1, project.name());
@@ -886,8 +904,9 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
                 ps.setString(3, project.status().name());
                 ps.setString(4, project.priority().name());
                 ps.setString(5, project.dueDate());
-                ps.setString(6, Instant.now().toString());
-                ps.setString(7, project.id());
+                ps.setString(6, project.seasonId());
+                ps.setString(7, Instant.now().toString());
+                ps.setString(8, project.id());
                 ps.executeUpdate();
             }
             return getProject(project.id()).orElse(project);
@@ -917,6 +936,7 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
             ProjectStatus.fromString(rs.getString("status")),
             Priority.fromString(rs.getString("priority")),
             rs.getString("due_date"),
+            rs.getString("season_id"),
             Instant.parse(rs.getString("created_at")),
             Instant.parse(rs.getString("updated_at"))
         );
@@ -929,8 +949,128 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
         ps.setString(4, project.status().name());
         ps.setString(5, project.priority().name());
         ps.setString(6, project.dueDate());
-        ps.setString(7, project.createdAt().toString());
-        ps.setString(8, project.updatedAt().toString());
+        ps.setString(7, project.seasonId());
+        ps.setString(8, project.createdAt().toString());
+        ps.setString(9, project.updatedAt().toString());
+    }
+
+    @Override
+    public synchronized List<Season> listSeasons() {
+        try {
+            Connection conn = getConnection();
+            List<Season> seasons = new ArrayList<>();
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery(
+                         "SELECT id, name, notes, starts_on, ends_on, created_at, updated_at " +
+                         "FROM seasons ORDER BY starts_on DESC, name ASC")) {
+                while (rs.next()) {
+                    seasons.add(mapSeason(rs));
+                }
+            }
+            return seasons;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error listing seasons", e);
+        }
+    }
+
+    @Override
+    public synchronized Optional<Season> getSeason(String seasonId) {
+        try {
+            Connection conn = getConnection();
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT id, name, notes, starts_on, ends_on, created_at, updated_at " +
+                    "FROM seasons WHERE id = ?")) {
+                ps.setString(1, seasonId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        return Optional.of(mapSeason(rs));
+                    }
+                }
+            }
+            return Optional.empty();
+        } catch (SQLException e) {
+            throw new RuntimeException("Error fetching season " + seasonId, e);
+        }
+    }
+
+    @Override
+    public synchronized Season createSeason(Season season) {
+        try {
+            Connection conn = getConnection();
+            try (PreparedStatement ps = conn.prepareStatement("""
+                INSERT INTO seasons (id, name, notes, starts_on, ends_on, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """)) {
+                bindSeason(ps, season);
+                ps.executeUpdate();
+            }
+            return season;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error creating season", e);
+        }
+    }
+
+    @Override
+    public synchronized Season updateSeason(Season season) {
+        try {
+            Connection conn = getConnection();
+            try (PreparedStatement ps = conn.prepareStatement("""
+                UPDATE seasons
+                SET name = ?, notes = ?, starts_on = ?, ends_on = ?, updated_at = ?
+                WHERE id = ?
+            """)) {
+                ps.setString(1, season.name());
+                ps.setString(2, season.notes());
+                ps.setString(3, season.startsOn());
+                ps.setString(4, season.endsOn());
+                ps.setString(5, Instant.now().toString());
+                ps.setString(6, season.id());
+                ps.executeUpdate();
+            }
+            return getSeason(season.id()).orElse(season);
+        } catch (SQLException e) {
+            throw new RuntimeException("Error updating season " + season.id(), e);
+        }
+    }
+
+    @Override
+    public synchronized boolean deleteSeason(String seasonId) {
+        try {
+            Connection conn = getConnection();
+            try (PreparedStatement unassign = conn.prepareStatement(
+                    "UPDATE projects SET season_id = NULL WHERE season_id = ?")) {
+                unassign.setString(1, seasonId);
+                unassign.executeUpdate();
+            }
+            try (PreparedStatement ps = conn.prepareStatement("DELETE FROM seasons WHERE id = ?")) {
+                ps.setString(1, seasonId);
+                return ps.executeUpdate() > 0;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error deleting season " + seasonId, e);
+        }
+    }
+
+    private Season mapSeason(ResultSet rs) throws SQLException {
+        return new Season(
+            rs.getString("id"),
+            rs.getString("name"),
+            rs.getString("notes") != null ? rs.getString("notes") : "",
+            rs.getString("starts_on"),
+            rs.getString("ends_on"),
+            Instant.parse(rs.getString("created_at")),
+            Instant.parse(rs.getString("updated_at"))
+        );
+    }
+
+    private void bindSeason(PreparedStatement ps, Season season) throws SQLException {
+        ps.setString(1, season.id());
+        ps.setString(2, season.name());
+        ps.setString(3, season.notes());
+        ps.setString(4, season.startsOn());
+        ps.setString(5, season.endsOn());
+        ps.setString(6, season.createdAt().toString());
+        ps.setString(7, season.updatedAt().toString());
     }
 
     @Override

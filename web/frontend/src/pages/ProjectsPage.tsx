@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Calendar, Edit3, FolderKanban, Loader2, AlertCircle, Plus, Trash2 } from 'lucide-react';
-import { projectApi } from '../api/client';
+import { projectApi, seasonApi } from '../api/client';
 import { ProjectModal } from '../components/ProjectModal';
-import type { Priority, Project, ProjectStatus } from '../types/kanban';
+import type { Priority, Project, ProjectStatus, Season } from '../types/kanban';
 import { ui } from '../theme/ui';
 
 const statusStyles: Record<ProjectStatus, string> = {
@@ -30,6 +30,7 @@ type Filter = 'ALL' | ProjectStatus;
 
 export const ProjectsPage: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [seasons, setSeasons] = useState<Season[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('ALL');
@@ -40,7 +41,12 @@ export const ProjectsPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      setProjects(await projectApi.listProjects());
+      const [projectData, seasonData] = await Promise.all([
+        projectApi.listProjects(),
+        seasonApi.listSeasons(),
+      ]);
+      setProjects(projectData);
+      setSeasons(seasonData);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load projects');
     } finally {
@@ -57,6 +63,11 @@ export const ProjectsPage: React.FC = () => {
     [projects, filter]
   );
 
+  const seasonName = useMemo(() => {
+    const map = new Map(seasons.map((season) => [season.id, season.name]));
+    return (seasonId: string | null) => (seasonId ? map.get(seasonId) ?? 'Season' : null);
+  }, [seasons]);
+
   const handleSave = async (data: {
     id?: string;
     name: string;
@@ -64,6 +75,7 @@ export const ProjectsPage: React.FC = () => {
     status: ProjectStatus;
     priority: Priority;
     dueDate?: string;
+    seasonId?: string | null;
   }) => {
     if (data.id) {
       const updated = await projectApi.updateProject(data.id, data);
@@ -198,6 +210,9 @@ export const ProjectsPage: React.FC = () => {
                   {project.description && (
                     <p className="text-sm text-muted leading-relaxed line-clamp-3">{project.description}</p>
                   )}
+                  <p className="text-[11px] text-muted">
+                    {seasonName(project.seasonId) ?? 'Not in a season yet'}
+                  </p>
 
                   <div className="mt-auto flex items-center justify-between pt-1 text-[11px]">
                     <span className={`font-medium ${priorityStyles[project.priority]}`}>
@@ -222,6 +237,7 @@ export const ProjectsPage: React.FC = () => {
         onClose={() => setIsModalOpen(false)}
         onSave={handleSave}
         initialProject={editing}
+        seasons={seasons}
       />
     </div>
   );

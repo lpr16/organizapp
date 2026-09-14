@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Layers, Home, Columns3, FolderKanban, Workflow, Wallet, CalendarDays } from 'lucide-react';
+import { Layers, Home, Columns3, FolderKanban, Workflow, Wallet, CalendarDays, Leaf } from 'lucide-react';
 import { ThemeSelect } from '../theme/ThemeSelect';
 import { ui } from '../theme/ui';
 
@@ -8,6 +8,7 @@ const links = [
   { to: '/', label: 'Home', icon: Home, end: true },
   { to: '/calendar', label: 'Calendar', icon: CalendarDays, end: false },
   { to: '/board', label: 'Kanban', icon: Columns3, end: false },
+  { to: '/seasons', label: 'Seasons', icon: Leaf, end: false },
   { to: '/projects', label: 'Projects', icon: FolderKanban, end: false },
   { to: '/finance', label: 'Finance', icon: Wallet, end: false },
   { to: '/diagrams', label: 'BPMN', icon: Workflow, end: false },

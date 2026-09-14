@@ -4,10 +4,12 @@ import com.organizapp.core.port.BoardRepository;
 import com.organizapp.core.port.DiagramRepository;
 import com.organizapp.core.port.FinanceRepository;
 import com.organizapp.core.port.ProjectRepository;
+import com.organizapp.core.port.SeasonRepository;
 import com.organizapp.core.service.DiagramService;
 import com.organizapp.core.service.FinanceService;
 import com.organizapp.core.service.KanbanService;
 import com.organizapp.core.service.ProjectService;
+import com.organizapp.core.service.SeasonService;
 import com.organizapp.core.storage.SqliteBoardRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -41,8 +43,20 @@ public class AppConfig {
     }
 
     @Bean
-    public ProjectService projectService(ProjectRepository projectRepository) {
-        return new ProjectService(projectRepository);
+    public SeasonRepository seasonRepository(SqliteBoardRepository sqliteBoardRepository) {
+        return sqliteBoardRepository;
+    }
+
+    @Bean
+    public ProjectService projectService(
+            ProjectRepository projectRepository,
+            SeasonRepository seasonRepository) {
+        return new ProjectService(projectRepository, seasonRepository);
+    }
+
+    @Bean
+    public SeasonService seasonService(SeasonRepository seasonRepository) {
+        return new SeasonService(seasonRepository);
     }
 
     @Bean

@@ -45,6 +45,17 @@ export interface Project {
   status: ProjectStatus;
   priority: Priority;
   dueDate: string | null;
+  seasonId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Season {
+  id: string;
+  name: string;
+  notes: string;
+  startsOn: string;
+  endsOn: string | null;
   createdAt: string;
   updatedAt: string;
 }

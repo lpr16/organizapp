@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { X, AlertCircle, FolderKanban } from 'lucide-react';
-import type { Priority, Project, ProjectStatus } from '../types/kanban';
+import type { Priority, Project, ProjectStatus, Season } from '../types/kanban';
 import { ui } from '../theme/ui';
 
 interface Props {
@@ -13,16 +13,27 @@ interface Props {
     status: ProjectStatus;
     priority: Priority;
     dueDate?: string;
+    seasonId?: string | null;
   }) => Promise<void>;
   initialProject?: Project | null;
+  seasons?: Season[];
+  defaultSeasonId?: string;
 }
 
-export const ProjectModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialProject }) => {
+export const ProjectModal: React.FC<Props> = ({
+  isOpen,
+  onClose,
+  onSave,
+  initialProject,
+  seasons = [],
+  defaultSeasonId,
+}) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<ProjectStatus>('PLANNING');
   const [priority, setPriority] = useState<Priority>('MEDIUM');
   const [dueDate, setDueDate] = useState('');
+  const [seasonId, setSeasonId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -33,15 +44,17 @@ export const ProjectModal: React.FC<Props> = ({ isOpen, onClose, onSave, initial
       setStatus(initialProject.status);
       setPriority(initialProject.priority);
       setDueDate(initialProject.dueDate || '');
+      setSeasonId(initialProject.seasonId || '');
     } else {
       setName('');
       setDescription('');
       setStatus('PLANNING');
       setPriority('MEDIUM');
       setDueDate('');
+      setSeasonId(defaultSeasonId || '');
     }
     setError('');
-  }, [initialProject, isOpen]);
+  }, [initialProject, defaultSeasonId, isOpen]);
 
   if (!isOpen) return null;
 
@@ -62,6 +75,7 @@ export const ProjectModal: React.FC<Props> = ({ isOpen, onClose, onSave, initial
         status,
         priority,
         dueDate: dueDate ? dueDate : undefined,
+        seasonId: seasonId || null,
       });
       onClose();
     } catch (err: unknown) {
@@ -145,6 +159,18 @@ export const ProjectModal: React.FC<Props> = ({ isOpen, onClose, onSave, initial
               onChange={(e) => setDueDate(e.target.value)}
               className={ui.field}
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-fg mb-1.5">Season</label>
+            <select value={seasonId} onChange={(e) => setSeasonId(e.target.value)} className={ui.field}>
+              <option value="">None — not in a season yet</option>
+              {seasons.map((season) => (
+                <option key={season.id} value={season.id}>
+                  {season.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

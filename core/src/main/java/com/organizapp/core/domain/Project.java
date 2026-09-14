@@ -10,6 +10,7 @@ public record Project(
     ProjectStatus status,
     Priority priority,
     String dueDate,
+    String seasonId,
     Instant createdAt,
     Instant updatedAt
 ) {
@@ -18,7 +19,8 @@ public record Project(
             String description,
             ProjectStatus status,
             Priority priority,
-            String dueDate) {
+            String dueDate,
+            String seasonId) {
         Instant now = Instant.now();
         return new Project(
             UUID.randomUUID().toString(),
@@ -27,6 +29,7 @@ public record Project(
             status != null ? status : ProjectStatus.PLANNING,
             priority != null ? priority : Priority.MEDIUM,
             dueDate,
+            seasonId,
             now,
             now
         );
@@ -37,7 +40,8 @@ public record Project(
             String description,
             ProjectStatus status,
             Priority priority,
-            String dueDate) {
+            String dueDate,
+            String seasonId) {
         return new Project(
             this.id,
             name != null ? name : this.name,
@@ -45,6 +49,21 @@ public record Project(
             status != null ? status : this.status,
             priority != null ? priority : this.priority,
             dueDate,
+            seasonId,
+            this.createdAt,
+            Instant.now()
+        );
+    }
+
+    public Project withSeason(String seasonId) {
+        return new Project(
+            this.id,
+            this.name,
+            this.description,
+            this.status,
+            this.priority,
+            this.dueDate,
+            seasonId,
             this.createdAt,
             Instant.now()
         );

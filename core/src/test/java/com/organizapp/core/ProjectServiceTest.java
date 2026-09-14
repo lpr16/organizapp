@@ -21,7 +21,7 @@ class ProjectServiceTest {
     void setUp() {
         String uniqueDb = "jdbc:sqlite:file:projdb_" + UUID.randomUUID() + "?mode=memory&cache=shared";
         SqliteBoardRepository repository = new SqliteBoardRepository(uniqueDb);
-        service = new ProjectService(repository);
+        service = new ProjectService(repository, repository);
     }
 
     @Test
@@ -39,25 +39,27 @@ class ProjectServiceTest {
                 "JavaFX shell around :core",
                 ProjectStatus.PLANNING,
                 Priority.HIGH,
-                "2026-10-15"
+                "2026-10-15",
+                null
         );
 
         assertThat(created.id()).isNotBlank();
         assertThat(created.name()).isEqualTo("Desktop client");
         assertThat(created.priority()).isEqualTo(Priority.HIGH);
+        assertThat(created.seasonId()).isNull();
         assertThat(service.listProjects()).hasSize(2);
     }
 
     @Test
     void shouldRejectBlankName() {
-        assertThatThrownBy(() -> service.createProject("  ", "", ProjectStatus.ACTIVE, Priority.LOW, null))
+        assertThatThrownBy(() -> service.createProject("  ", "", ProjectStatus.ACTIVE, Priority.LOW, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("cannot be blank");
     }
 
     @Test
     void shouldUpdateAndDeleteProject() {
-        Project created = service.createProject("Temp", "Notes", ProjectStatus.ON_HOLD, Priority.LOW, null);
+        Project created = service.createProject("Temp", "Notes", ProjectStatus.ON_HOLD, Priority.LOW, null, null);
 
         Project updated = service.updateProject(
                 created.id(),
@@ -65,7 +67,8 @@ class ProjectServiceTest {
                 "Updated notes",
                 ProjectStatus.COMPLETED,
                 Priority.MEDIUM,
-                "2026-12-01"
+                "2026-12-01",
+                null
         );
 
         assertThat(updated.name()).isEqualTo("Renamed");
