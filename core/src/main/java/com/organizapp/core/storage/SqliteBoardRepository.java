@@ -3,11 +3,13 @@ package com.organizapp.core.storage;
 import com.organizapp.core.domain.Board;
 import com.organizapp.core.domain.BoardColumn;
 import com.organizapp.core.domain.BoardLane;
+import com.organizapp.core.domain.BpmnDiagram;
 import com.organizapp.core.domain.Priority;
 import com.organizapp.core.domain.Project;
 import com.organizapp.core.domain.ProjectStatus;
 import com.organizapp.core.domain.TaskCard;
 import com.organizapp.core.port.BoardRepository;
+import com.organizapp.core.port.DiagramRepository;
 import com.organizapp.core.port.ProjectRepository;
 
 import java.io.File;
@@ -15,7 +17,7 @@ import java.sql.*;
 import java.time.Instant;
 import java.util.*;
 
-public class SqliteBoardRepository implements BoardRepository, ProjectRepository, AutoCloseable {
+public class SqliteBoardRepository implements BoardRepository, ProjectRepository, DiagramRepository, AutoCloseable {
     private final String jdbcUrl;
     private Connection connection;
 
@@ -104,6 +106,16 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
                         status TEXT NOT NULL,
                         priority TEXT NOT NULL,
                         due_date TEXT,
+                        created_at TEXT NOT NULL,
+                        updated_at TEXT NOT NULL
+                    );
+                """);
+
+                stmt.execute("""
+                    CREATE TABLE IF NOT EXISTS bpmn_diagrams (
+                        id TEXT PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        xml TEXT NOT NULL,
                         created_at TEXT NOT NULL,
                         updated_at TEXT NOT NULL
                     );
@@ -902,6 +914,114 @@ public class SqliteBoardRepository implements BoardRepository, ProjectRepository
         ps.setString(6, project.dueDate());
         ps.setString(7, project.createdAt().toString());
         ps.setString(8, project.updatedAt().toString());
+    }
+
+    @Override
+    public synchronized List<BpmnDiagram> listDiagrams() {
+        try {
+            Connection conn = getConnection();
+            List<BpmnDiagram> diagrams = new ArrayList<>();
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery(
+                         "SELECT id, name, created_at, updated_at FROM bpmn_diagrams ORDER BY updated_at DESC")) {
+                while (rs.next()) {
+                    diagrams.add(new BpmnDiagram(
+                        rs.getString("id"),
+                        rs.getString("name"),
+                        "",
+                        Instant.parse(rs.getString("created_at")),
+                        Instant.parse(rs.getString("updated_at"))
+                    ));
+                }
+            }
+            return diagrams;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error listing diagrams", e);
+        }
+    }
+
+    @Override
+    public synchronized Optional<BpmnDiagram> getDiagram(String diagramId) {
+        try {
+            Connection conn = getConnection();
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT id, name, xml, created_at, updated_at FROM bpmn_diagrams WHERE id = ?")) {
+                ps.setString(1, diagramId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        return Optional.of(mapDiagram(rs));
+                    }
+                }
+            }
+            return Optional.empty();
+        } catch (SQLException e) {
+            throw new RuntimeException("Error fetching diagram " + diagramId, e);
+        }
+    }
+
+    @Override
+    public synchronized BpmnDiagram createDiagram(BpmnDiagram diagram) {
+        try {
+            Connection conn = getConnection();
+            try (PreparedStatement ps = conn.prepareStatement("""
+                INSERT INTO bpmn_diagrams (id, name, xml, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?)
+            """)) {
+                ps.setString(1, diagram.id());
+                ps.setString(2, diagram.name());
+                ps.setString(3, diagram.xml());
+                ps.setString(4, diagram.createdAt().toString());
+                ps.setString(5, diagram.updatedAt().toString());
+                ps.executeUpdate();
+            }
+            return diagram;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error creating diagram", e);
+        }
+    }
+
+    @Override
+    public synchronized BpmnDiagram updateDiagram(BpmnDiagram diagram) {
+        try {
+            Connection conn = getConnection();
+            try (PreparedStatement ps = conn.prepareStatement("""
+                UPDATE bpmn_diagrams
+                SET name = ?, xml = ?, updated_at = ?
+                WHERE id = ?
+            """)) {
+                ps.setString(1, diagram.name());
+                ps.setString(2, diagram.xml());
+                ps.setString(3, Instant.now().toString());
+                ps.setString(4, diagram.id());
+                ps.executeUpdate();
+            }
+            return getDiagram(diagram.id()).orElse(diagram);
+        } catch (SQLException e) {
+            throw new RuntimeException("Error updating diagram " + diagram.id(), e);
+        }
+    }
+
+    @Override
+    public synchronized boolean deleteDiagram(String diagramId) {
+        try {
+            Connection conn = getConnection();
+            try (PreparedStatement ps = conn.prepareStatement("DELETE FROM bpmn_diagrams WHERE id = ?")) {
+                ps.setString(1, diagramId);
+                return ps.executeUpdate() > 0;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error deleting diagram " + diagramId, e);
+        }
+    }
+
+    private BpmnDiagram mapDiagram(ResultSet rs) throws SQLException {
+        return new BpmnDiagram(
+            rs.getString("id"),
+            rs.getString("name"),
+            rs.getString("xml"),
+            Instant.parse(rs.getString("created_at")),
+            Instant.parse(rs.getString("updated_at"))
+        );
     }
 
     @Override

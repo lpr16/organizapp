@@ -8,14 +8,16 @@ import {
   Clock,
   Loader2,
   AlertCircle,
+  Workflow,
 } from 'lucide-react';
-import { kanbanApi, projectApi } from '../api/client';
-import type { Board, Project } from '../types/kanban';
+import { diagramApi, kanbanApi, projectApi } from '../api/client';
+import type { Board, BpmnDiagram, Project } from '../types/kanban';
 import { ui } from '../theme/ui';
 
 export const HomePage: React.FC = () => {
   const [board, setBoard] = useState<Board | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [diagrams, setDiagrams] = useState<BpmnDiagram[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,12 +25,14 @@ export const HomePage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const [boardData, projectData] = await Promise.all([
+      const [boardData, projectData, diagramData] = await Promise.all([
         kanbanApi.getBoard(),
         projectApi.listProjects(),
+        diagramApi.listDiagrams(),
       ]);
       setBoard(boardData);
       setProjects(projectData);
+      setDiagrams(diagramData);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to load workspace';
       setError(message);
@@ -59,8 +63,8 @@ export const HomePage: React.FC = () => {
             Where do you want to work?
           </h1>
           <p className="text-sm text-muted max-w-xl leading-relaxed">
-            OrganizApp keeps a Kanban board for daily tasks and a project list for longer efforts.
-            Both live in the same local SQLite file on this machine.
+            OrganizApp keeps a Kanban board, a project list, and simple BPMN diagrams.
+            They all live in the same local SQLite file on this machine.
           </p>
         </section>
 
@@ -93,7 +97,7 @@ export const HomePage: React.FC = () => {
               <Stat label="Active projects" value={activeProjects} />
             </div>
 
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-3 gap-4">
               <DestinationCard
                 to="/board"
                 title="Kanban board"
@@ -107,6 +111,13 @@ export const HomePage: React.FC = () => {
                 description={`${projects.length} project${projects.length === 1 ? '' : 's'} with status, priority, and due dates.`}
                 icon={<FolderKanban className="w-5 h-5" />}
                 cta="Open projects"
+              />
+              <DestinationCard
+                to="/diagrams"
+                title="BPMN diagrams"
+                description={`${diagrams.length} process diagram${diagrams.length === 1 ? '' : 's'} with start, tasks, decisions, and end.`}
+                icon={<Workflow className="w-5 h-5" />}
+                cta="Open diagrams"
               />
             </div>
           </>

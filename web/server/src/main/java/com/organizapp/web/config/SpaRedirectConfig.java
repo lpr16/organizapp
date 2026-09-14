@@ -11,5 +11,7 @@ public class SpaRedirectConfig implements WebMvcConfigurer {
     public void addViewControllers(ViewControllerRegistry registry) {
         registry.addViewController("/board").setViewName("forward:/index.html");
         registry.addViewController("/projects").setViewName("forward:/index.html");
+        registry.addViewController("/diagrams").setViewName("forward:/index.html");
+        registry.addViewController("/diagrams/{id}").setViewName("forward:/index.html");
     }
 }

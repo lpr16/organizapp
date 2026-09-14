@@ -1,7 +1,9 @@
 package com.organizapp.web.config;
 
 import com.organizapp.core.port.BoardRepository;
+import com.organizapp.core.port.DiagramRepository;
 import com.organizapp.core.port.ProjectRepository;
+import com.organizapp.core.service.DiagramService;
 import com.organizapp.core.service.KanbanService;
 import com.organizapp.core.service.ProjectService;
 import com.organizapp.core.storage.SqliteBoardRepository;
@@ -39,5 +41,15 @@ public class AppConfig {
     @Bean
     public ProjectService projectService(ProjectRepository projectRepository) {
         return new ProjectService(projectRepository);
+    }
+
+    @Bean
+    public DiagramRepository diagramRepository(SqliteBoardRepository sqliteBoardRepository) {
+        return sqliteBoardRepository;
+    }
+
+    @Bean
+    public DiagramService diagramService(DiagramRepository diagramRepository) {
+        return new DiagramService(diagramRepository);
     }
 }

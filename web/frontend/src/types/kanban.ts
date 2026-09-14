@@ -48,3 +48,11 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface BpmnDiagram {
+  id: string;
+  name: string;
+  xml: string;
+  createdAt: string;
+  updatedAt: string;
+}

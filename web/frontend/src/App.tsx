@@ -4,6 +4,8 @@ import { AppLayout } from './layout/AppLayout';
 import { HomePage } from './pages/HomePage';
 import { BoardPage } from './pages/BoardPage';
 import { ProjectsPage } from './pages/ProjectsPage';
+import { DiagramsPage } from './pages/DiagramsPage';
+import { DiagramEditorPage } from './pages/DiagramEditorPage';
 
 export const App: React.FC = () => {
   return (
@@ -12,6 +14,8 @@ export const App: React.FC = () => {
         <Route index element={<HomePage />} />
         <Route path="board" element={<BoardPage />} />
         <Route path="projects" element={<ProjectsPage />} />
+        <Route path="diagrams" element={<DiagramsPage />} />
+        <Route path="diagrams/:id" element={<DiagramEditorPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

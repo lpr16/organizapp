@@ -1,0 +1,40 @@
+.bpmn-shell {
+  --bpmn-bg: #fafafa;
+}
+
+[data-theme="dark"] .bpmn-shell,
+[data-theme="navy"] .bpmn-shell {
+  --bpmn-bg: #18181b;
+}
+
+[data-theme="navy"] .bpmn-shell {
+  --bpmn-bg: #0b1220;
+}
+
+.bpmn-shell .bjs-container,
+.bpmn-shell .djs-container,
+.bpmn-shell .djs-parent {
+  height: 100%;
+  width: 100%;
+}
+
+.bpmn-shell .djs-container {
+  background: var(--bpmn-bg);
+}
+
+.bpmn-shell .djs-palette {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  left: 12px;
+  top: 12px;
+}
+
+.bpmn-shell .djs-palette .entry {
+  color: var(--fg);
+}
+
+.bpmn-shell .djs-palette .entry:hover {
+  color: var(--fg);
+  background: var(--surface-muted);
+}

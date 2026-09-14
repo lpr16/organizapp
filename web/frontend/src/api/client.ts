@@ -1,4 +1,4 @@
-import type { Board, BoardColumn, BoardLane, Project, TaskCard } from '../types/kanban';
+import type { Board, BoardColumn, BoardLane, BpmnDiagram, Project, TaskCard } from '../types/kanban';
 
 const BASE_URL = '/api';
 
@@ -185,5 +185,46 @@ export const projectApi = {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error('Failed to delete project');
+  },
+};
+
+export const diagramApi = {
+  async listDiagrams(): Promise<BpmnDiagram[]> {
+    const res = await fetch(`${BASE_URL}/diagrams`);
+    if (!res.ok) throw new Error('Failed to load diagrams');
+    return res.json();
+  },
+
+  async getDiagram(id: string): Promise<BpmnDiagram> {
+    const res = await fetch(`${BASE_URL}/diagrams/${id}`);
+    if (!res.ok) throw new Error('Failed to load diagram');
+    return res.json();
+  },
+
+  async createDiagram(data: { name: string; xml?: string }): Promise<BpmnDiagram> {
+    const res = await fetch(`${BASE_URL}/diagrams`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to create diagram');
+    return res.json();
+  },
+
+  async updateDiagram(id: string, data: { name?: string; xml?: string }): Promise<BpmnDiagram> {
+    const res = await fetch(`${BASE_URL}/diagrams/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to save diagram');
+    return res.json();
+  },
+
+  async deleteDiagram(id: string): Promise<void> {
+    const res = await fetch(`${BASE_URL}/diagrams/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Failed to delete diagram');
   },
 };
