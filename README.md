@@ -1,53 +1,86 @@
-# OrganizApp 🚀
+# OrganizApp
 
-A modular, personal organization and project management system built with **Clean Architecture**.
+Version **0.1.0-SNAPSHOT** — a personal Kanban board for a single local user.
 
-- **`:core`**: Pure Java 25 domain logic, entities, services, and **SQLite** embedded persistence.
-- **`:web:server`**: Spring Boot 3 REST API exposing the `:core` Kanban service.
-- **`web/frontend`**: Modern Web UI built with **React 19 + TypeScript + Tailwind CSS + @dnd-kit**.
-- **`:desktop` & `:mobile`**: Reserved connection points ready to plug into `:core`.
+OrganizApp is a modular Java project with a React web UI. Domain rules and SQLite persistence live in `:core`. The first shipping surface is a Spring Boot REST API plus a Vite/React board. Desktop and Android folders exist as reserved connection points; they are not implemented in this version.
 
----
+## What version 1 can do
 
-## ⚡ Quick Start
+- One personal board, seeded on first launch as **My Personal Board**
+- Default columns: **To Do**, **In Progress**, **Done**
+- Create, edit, delete, and drag-and-drop tasks (within a column or across columns)
+- Priority (`LOW`, `MEDIUM`, `HIGH`, `URGENT`) and optional due date
+- Add and delete columns
+- Local SQLite file under your home directory — no account, no cloud
 
-### 1. Run the Entire Web App (Spring Boot + Built Frontend)
-To run the server with the embedded React UI on `http://localhost:8080`:
+## Documentation
+
+| Document | Audience |
+|---|---|
+| [User guide](docs/user-guide.md) | Using the board in the browser |
+| [Architecture](docs/architecture.md) | How modules, ports, and the UI fit together |
+| [Data model](docs/data-model.md) | Entities, SQLite schema, and seed data |
+| [HTTP API](docs/api.md) | REST endpoints, request bodies, and status codes |
+| [Development](docs/development.md) | Prerequisites, run/test/build, and conventions |
+| [Version 1 scope](docs/version-1.md) | What is in, what is out, and known limits |
+
+## Quick start
+
+**Prerequisites:** JDK 21+, Node.js 20+ (only for frontend development), and the Gradle wrapper in this repo.
+
+### Run the API (and any copied static UI)
 
 ```powershell
 .\gradlew.bat :web:server:bootRun
 ```
-Then open your browser to **http://localhost:8080**.
 
-### 2. Frontend Development Mode (Instant Hot-Reload)
-When developing the React UI with instant Hot Module Replacement:
+Open [http://localhost:8080](http://localhost:8080). If `web/server/src/main/resources/static/` contains a built frontend, the board loads there. The API is always at `/api/*`.
 
-1. In terminal 1, start the Spring Boot API:
-   ```powershell
-   .\gradlew.bat :web:server:bootRun
-   ```
-2. In terminal 2, start the Vite dev server:
-   ```powershell
-   cd web/frontend
-   npm run dev
-   ```
-   Open **http://localhost:5173**. Vite proxies `/api` calls directly to Spring Boot at `http://localhost:8080`.
+### Develop the UI with hot reload
 
----
+Terminal 1:
 
-## 🧪 Running Automated Tests
+```powershell
+.\gradlew.bat :web:server:bootRun
+```
 
-Run unit tests for `:core` and integration tests for `:web:server`:
+Terminal 2:
+
+```powershell
+cd web/frontend
+npm install
+npm run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173). Vite proxies `/api` to `http://localhost:8080`.
+
+### Tests
 
 ```powershell
 .\gradlew.bat test
 ```
 
----
+## Repository layout
 
-## 📁 Database
+```
+organizapp/
+├── core/                 Java domain, KanbanService, SQLite repository
+├── web/                  Web leg — see web/README.md
+│   ├── server/           Spring Boot 3 REST API (`:web:server`)
+│   └── frontend/         React 19 + TypeScript + Tailwind 4 + @dnd-kit
+├── desktop/              Reserved (JavaFX) — not in v1
+├── mobile/               Reserved (Kotlin / Compose) — not in v1
+├── docs/                 Version 1 documentation
+└── gradle/wrapper/       Gradle 9.6 wrapper
+```
 
-OrganizApp uses **SQLite** stored automatically at:
-- Windows: `C:\Users\<User>\.organizapp\organizapp.db`
+## Persistence
 
-The database auto-creates tables and seeds an initial Kanban board with *"To Do"*, *"In Progress"*, and *"Done"* columns.
+SQLite is created automatically:
+
+| OS | Path |
+|---|---|
+| Windows | `%USERPROFILE%\.organizapp\organizapp.db` |
+| macOS / Linux | `~/.organizapp/organizapp.db` |
+
+Deleting that file resets the board to the seeded welcome state on next start.

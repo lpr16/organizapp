@@ -1,32 +1,37 @@
-# React + TypeScript + Vite
+# Web frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React 19 + TypeScript + Vite 8 + Tailwind CSS 4 + `@dnd-kit` + Lucide. This is the version 1 Kanban UI.
 
-Currently, two official plugins are available:
+It is not a Gradle module. The parent overview is [../README.md](../README.md).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Scripts
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```powershell
+npm install
+npm run dev      # http://localhost:5173 — proxies /api → http://localhost:8080
+npm run build    # tsc -b && vite build → dist/
+npm run lint     # oxlint
+npm run preview  # serve the production build
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Start `:web:server` before `npm run dev`, or the board shows **Unable to Connect**.
+
+## Layout
+
+| Path | Role |
+|---|---|
+| `src/App.tsx` | Board state, drag handlers, API sync |
+| `src/api/client.ts` | `fetch` wrappers for `/api` |
+| `src/types/kanban.ts` | Mirrors Jackson-serialized `:core` records |
+| `src/components/` | Header, columns, cards, task/column modals |
+| `vite.config.ts` | React + Tailwind plugins, `/api` proxy |
+
+## Embedded copy
+
+`npm run build` writes `dist/`. Spring serves a **manually copied** snapshot from `web/server/src/main/resources/static/`. Hashed asset names change every build; replace the previous `assets/` files when you copy.
+
+## Docs
+
+- [User guide](../../docs/user-guide.md) — what the UI does
+- [HTTP API](../../docs/api.md) — endpoints this client calls
+- [Development](../../docs/development.md) — repo-wide setup
