@@ -1,9 +1,10 @@
 # :desktop Module (JavaFX)
 
-This module will contain the native desktop UI for **OrganizApp** using **JavaFX 21+** and **AtlantaFX** (modern styling).
+This module is reserved for a native desktop UI for **OrganizApp** using **JavaFX 21+** and **AtlantaFX**. It is **not implemented** in version 1.
 
-## How it connects to :core:
-In `desktop/build.gradle.kts`, you import `:core`:
+## How it would connect to :core
+
+In `desktop/build.gradle.kts`, import `:core`:
 
 ```kotlin
 plugins {
@@ -26,5 +27,8 @@ application {
 }
 ```
 
-## Sharing Database State:
-The desktop app can instantiate `new SqliteBoardRepository()` and `new KanbanService(repository)` directly, connecting to the exact same SQLite database file (`~/.organizapp/organizapp.db`) used by the web leg!
+## Sharing database state
+
+The desktop app can instantiate `new SqliteBoardRepository()` plus `KanbanService`, `ProjectService`, and `DiagramService` on that repository, connecting to the same SQLite file (`~/.organizapp/organizapp.db`) used by the web leg.
+
+Do not duplicate domain rules in JavaFX if they already live in those services. See [architecture](../docs/architecture.md) and [data model](../docs/data-model.md).

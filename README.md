@@ -1,23 +1,23 @@
 # OrganizApp
 
-Version **0.1.0-SNAPSHOT** — a personal Kanban board for a single local user.
+Version **0.1.0-SNAPSHOT** — a personal workspace for one local user: Kanban, projects, and simple BPMN diagrams.
 
-OrganizApp is a modular Java project with a React web UI. Domain rules and SQLite persistence live in `:core`. The first shipping surface is a Spring Boot REST API plus a Vite/React board. Desktop and Android folders exist as reserved connection points; they are not implemented in this version.
+OrganizApp is a modular Java project with a React web UI. Domain rules and SQLite persistence live in `:core`. The shipping surface is a Spring Boot REST API plus a Vite/React SPA. Desktop and Android folders exist as reserved connection points; they are not implemented in this version.
 
-## What version 1 can do
+## What this version can do
 
-- One personal board, seeded on first launch as **My Personal Board**
-- Default columns: **To Do**, **In Progress**, **Done**
-- Create, edit, delete, and drag-and-drop tasks (within a column or across columns)
-- Priority (`LOW`, `MEDIUM`, `HIGH`, `URGENT`) and optional due date
-- Add and delete columns
+- **Home** dashboard with board, project, and diagram counts
+- **Kanban** board with columns × swimlanes, drag-and-drop cards, inline column/lane rename and reorder
+- **Projects** list with status, priority, and due date
+- **BPMN** list and editor (start, task, decision, parallel, end) persisted as XML
+- Four color themes (Light, Dark, Dark blue, Beige)
 - Local SQLite file under your home directory — no account, no cloud
 
 ## Documentation
 
 | Document | Audience |
 |---|---|
-| [User guide](docs/user-guide.md) | Using the board in the browser |
+| [User guide](docs/user-guide.md) | Using Home, Kanban, Projects, and BPMN in the browser |
 | [Architecture](docs/architecture.md) | How modules, ports, and the UI fit together |
 | [Data model](docs/data-model.md) | Entities, SQLite schema, and seed data |
 | [HTTP API](docs/api.md) | REST endpoints, request bodies, and status codes |
@@ -34,7 +34,9 @@ OrganizApp is a modular Java project with a React web UI. Domain rules and SQLit
 .\gradlew.bat :web:server:bootRun
 ```
 
-Open [http://localhost:8080](http://localhost:8080). If `web/server/src/main/resources/static/` contains a built frontend, the board loads there. The API is always at `/api/*`.
+Open [http://localhost:8080](http://localhost:8080). If `web/server/src/main/resources/static/` contains a built frontend, the SPA loads there. The API is always at `/api/*`.
+
+While developing, use Vite on port 5173. The copy served on 8080 is only as fresh as the last manual `npm run build` + copy into `static/`.
 
 ### Develop the UI with hot reload
 
@@ -64,10 +66,10 @@ Open [http://localhost:5173](http://localhost:5173). Vite proxies `/api` to `htt
 
 ```
 organizapp/
-├── core/                 Java domain, KanbanService, SQLite repository
+├── core/                 Java domain, services, SQLite repository
 ├── web/                  Web leg — see web/README.md
 │   ├── server/           Spring Boot 3 REST API (`:web:server`)
-│   └── frontend/         React 19 + TypeScript + Tailwind 4 + @dnd-kit
+│   └── frontend/         React 19 + TypeScript + Tailwind 4 + bpmn-js
 ├── desktop/              Reserved (JavaFX) — not in v1
 ├── mobile/               Reserved (Kotlin / Compose) — not in v1
 ├── docs/                 Version 1 documentation
@@ -83,4 +85,6 @@ SQLite is created automatically:
 | Windows | `%USERPROFILE%\.organizapp\organizapp.db` |
 | macOS / Linux | `~/.organizapp/organizapp.db` |
 
-Deleting that file resets the board to the seeded welcome state on next start.
+Deleting that file resets the workspace to the seeded welcome state on next start (board, default project). BPMN diagrams are not seeded.
+
+Do not commit that database file. It is personal local data.

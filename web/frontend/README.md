@@ -1,6 +1,6 @@
 # Web frontend
 
-React 19 + TypeScript + Vite 8 + Tailwind CSS 4 + `@dnd-kit` + Lucide. This is the version 1 Kanban UI.
+React 19 + TypeScript + Vite 8 + Tailwind CSS 4 + `@dnd-kit` + `bpmn-js` + Lucide. This is the version 1 SPA: Home, Kanban (swimlanes), Projects, and a simple BPMN editor.
 
 It is not a Gradle module. The parent overview is [../README.md](../README.md).
 
@@ -14,17 +14,25 @@ npm run lint     # oxlint
 npm run preview  # serve the production build
 ```
 
-Start `:web:server` before `npm run dev`, or the board shows **Unable to Connect**.
+Start `:web:server` before `npm run dev`, or pages show a connection error.
 
 ## Layout
 
 | Path | Role |
 |---|---|
-| `src/App.tsx` | Board state, drag handlers, API sync |
-| `src/api/client.ts` | `fetch` wrappers for `/api` |
+| `src/App.tsx` | React Router routes inside `AppLayout` |
+| `src/layout/AppLayout.tsx` | Top nav + page outlet |
+| `src/pages/` | Home, Board, Projects, Diagrams, DiagramEditor |
+| `src/api/client.ts` | `kanbanApi`, `projectApi`, `diagramApi` (`fetch` against `/api`) |
 | `src/types/kanban.ts` | Mirrors Jackson-serialized `:core` records |
-| `src/components/` | Header, columns, cards, task/column modals |
+| `src/theme/` | Theme registry, provider, select, UI class tokens |
+| `src/bpmn/` | Custom palette and canvas shell CSS |
+| `src/components/` | Board chrome, cards, modals, `InlineName` |
 | `vite.config.ts` | React + Tailwind plugins, `/api` proxy |
+
+## Themes
+
+`ThemeProvider` writes `data-theme` on `<html>` and stores the choice in `localStorage` (`organizapp.theme`). Palettes: Light, Dark, Dark blue (`navy`), Beige. Components should use tokens from `src/theme/ui.ts`.
 
 ## Embedded copy
 
