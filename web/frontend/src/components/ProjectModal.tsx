@@ -1,66 +1,53 @@
-import React, { useState, useEffect } from 'react';
-import { X, AlertCircle, Sparkles } from 'lucide-react';
-import type { BoardColumn, Priority, TaskCard } from '../types/kanban';
+import React, { useEffect, useState } from 'react';
+import { X, AlertCircle, FolderKanban } from 'lucide-react';
+import type { Priority, Project, ProjectStatus } from '../types/kanban';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (taskData: {
+  onSave: (data: {
     id?: string;
-    columnId: string;
-    title: string;
+    name: string;
     description: string;
+    status: ProjectStatus;
     priority: Priority;
     dueDate?: string;
   }) => Promise<void>;
-  initialTask?: TaskCard | null;
-  columns: BoardColumn[];
-  defaultColumnId?: string;
+  initialProject?: Project | null;
 }
 
-export const TaskModal: React.FC<Props> = ({
-  isOpen,
-  onClose,
-  onSave,
-  initialTask,
-  columns,
-  defaultColumnId,
-}) => {
-  const [title, setTitle] = useState('');
+export const ProjectModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialProject }) => {
+  const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [status, setStatus] = useState<ProjectStatus>('PLANNING');
   const [priority, setPriority] = useState<Priority>('MEDIUM');
-  const [columnId, setColumnId] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (initialTask) {
-      setTitle(initialTask.title);
-      setDescription(initialTask.description || '');
-      setPriority(initialTask.priority);
-      setColumnId(initialTask.columnId);
-      setDueDate(initialTask.dueDate || '');
+    if (initialProject) {
+      setName(initialProject.name);
+      setDescription(initialProject.description || '');
+      setStatus(initialProject.status);
+      setPriority(initialProject.priority);
+      setDueDate(initialProject.dueDate || '');
     } else {
-      setTitle('');
+      setName('');
       setDescription('');
+      setStatus('PLANNING');
       setPriority('MEDIUM');
-      setColumnId(defaultColumnId || (columns.length > 0 ? columns[0].id : ''));
       setDueDate('');
     }
     setError('');
-  }, [initialTask, defaultColumnId, columns, isOpen]);
+  }, [initialProject, isOpen]);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) {
-      setError('Task title is required');
-      return;
-    }
-    if (!columnId) {
-      setError('Please select a column');
+    if (!name.trim()) {
+      setError('Project name is required');
       return;
     }
 
@@ -68,30 +55,29 @@ export const TaskModal: React.FC<Props> = ({
       setIsSubmitting(true);
       setError('');
       await onSave({
-        id: initialTask?.id,
-        columnId,
-        title: title.trim(),
+        id: initialProject?.id,
+        name: name.trim(),
         description: description.trim(),
+        status,
         priority,
         dueDate: dueDate ? dueDate : undefined,
       });
       onClose();
-    } catch (err: any) {
-      setError(err.message || 'Failed to save task');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to save project');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
       <div className="w-full max-w-lg max-h-[90vh] bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-indigo-400" />
+            <FolderKanban className="w-4 h-4 text-indigo-400" />
             <h3 className="font-semibold text-slate-100">
-              {initialTask ? 'Edit Task' : 'Create New Task'}
+              {initialProject ? 'Edit Project' : 'New Project'}
             </h3>
           </div>
           <button
@@ -102,7 +88,6 @@ export const TaskModal: React.FC<Props> = ({
           </button>
         </div>
 
-        {/* Modal Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
           {error && (
             <div className="flex items-center gap-2 p-3 text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl">
@@ -113,13 +98,13 @@ export const TaskModal: React.FC<Props> = ({
 
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Task Title <span className="text-rose-400">*</span>
+              Project name <span className="text-rose-400">*</span>
             </label>
             <input
               type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., Set up JavaFX desktop app"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g., Desktop client, Research notes"
               className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition"
               autoFocus
             />
@@ -127,27 +112,20 @@ export const TaskModal: React.FC<Props> = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Column
-              </label>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5">Status</label>
               <select
-                value={columnId}
-                onChange={(e) => setColumnId(e.target.value)}
-                disabled={!!initialTask}
-                className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 disabled:opacity-50"
+                value={status}
+                onChange={(e) => setStatus(e.target.value as ProjectStatus)}
+                className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
               >
-                {columns.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
+                <option value="PLANNING">Planning</option>
+                <option value="ACTIVE">Active</option>
+                <option value="ON_HOLD">On Hold</option>
+                <option value="COMPLETED">Completed</option>
               </select>
             </div>
-
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Priority
-              </label>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5">Priority</label>
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as Priority)}
@@ -162,33 +140,26 @@ export const TaskModal: React.FC<Props> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Due Date
-            </label>
-            <div className="relative">
-              <input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-              />
-            </div>
+            <label className="block text-xs font-medium text-slate-300 mb-1.5">Due date</label>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+            />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Description (Optional)
-            </label>
+            <label className="block text-xs font-medium text-slate-300 mb-1.5">Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              placeholder="Add details, notes, or checklist items..."
-              className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition resize-none"
+              placeholder="Goal, scope, or notes..."
+              className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none"
             />
           </div>
 
-          {/* Modal Footer */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
             <button
               type="button"
@@ -202,7 +173,7 @@ export const TaskModal: React.FC<Props> = ({
               disabled={isSubmitting}
               className="px-5 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 rounded-xl shadow-md shadow-indigo-600/20 transition"
             >
-              {isSubmitting ? 'Saving...' : initialTask ? 'Save Changes' : 'Create Task'}
+              {isSubmitting ? 'Saving...' : initialProject ? 'Save Changes' : 'Create Project'}
             </button>
           </div>
         </form>

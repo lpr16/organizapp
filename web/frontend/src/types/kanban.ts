@@ -26,3 +26,16 @@ export interface Board {
   createdAt: string;
   columns: BoardColumn[];
 }
+
+export type ProjectStatus = 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED';
+
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  status: ProjectStatus;
+  priority: Priority;
+  dueDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

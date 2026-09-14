@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layers, Plus, Columns, CheckCircle2, Clock, CheckSquare } from 'lucide-react';
+import { Plus, Columns, CheckCircle2, Clock, CheckSquare } from 'lucide-react';
 import type { Board } from '../types/kanban';
 
 interface Props {
@@ -10,7 +10,7 @@ interface Props {
 
 export const Header: React.FC<Props> = ({ board, onNewTask, onNewColumn }) => {
   const totalTasks = board?.columns.reduce((sum, col) => sum + col.tasks.length, 0) || 0;
-  
+
   const inProgressTasks = board?.columns
     .filter((col) => col.name.toLowerCase().includes('progress'))
     .reduce((sum, col) => sum + col.tasks.length, 0) || 0;
@@ -20,29 +20,15 @@ export const Header: React.FC<Props> = ({ board, onNewTask, onNewColumn }) => {
     .reduce((sum, col) => sum + col.tasks.length, 0) || 0;
 
   return (
-    <header className="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/80 px-6 py-4">
+    <header className="border-b border-slate-800/80 px-6 py-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 max-w-7xl mx-auto">
-        {/* Brand & Board Name */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-md shadow-indigo-500/20 text-white">
-            <Layers className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold text-slate-100 tracking-tight">
-                OrganizApp
-              </h1>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-medium">
-                Personal
-              </span>
-            </div>
-            <p className="text-xs text-slate-400">
-              {board?.name || 'Loading workspace...'}
-            </p>
-          </div>
+        <div>
+          <p className="text-[11px] uppercase tracking-wider text-indigo-400 font-medium">Kanban board</p>
+          <h1 className="text-lg font-bold text-slate-100 tracking-tight">
+            {board?.name || 'Loading workspace...'}
+          </h1>
         </div>
 
-        {/* Quick Stats Pill */}
         <div className="hidden md:flex items-center gap-5 px-4 py-1.5 bg-slate-900/60 border border-slate-800 rounded-xl text-xs text-slate-400">
           <div className="flex items-center gap-1.5">
             <CheckSquare className="w-3.5 h-3.5 text-slate-400" />
@@ -60,7 +46,6 @@ export const Header: React.FC<Props> = ({ board, onNewTask, onNewColumn }) => {
           </div>
         </div>
 
-        {/* Actions */}
         <div className="flex items-center gap-2.5 self-end sm:self-center">
           <button
             onClick={onNewColumn}

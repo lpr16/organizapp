@@ -3,15 +3,18 @@ package com.organizapp.core.storage;
 import com.organizapp.core.domain.Board;
 import com.organizapp.core.domain.BoardColumn;
 import com.organizapp.core.domain.Priority;
+import com.organizapp.core.domain.Project;
+import com.organizapp.core.domain.ProjectStatus;
 import com.organizapp.core.domain.TaskCard;
 import com.organizapp.core.port.BoardRepository;
+import com.organizapp.core.port.ProjectRepository;
 
 import java.io.File;
 import java.sql.*;
 import java.time.Instant;
 import java.util.*;
 
-public class SqliteBoardRepository implements BoardRepository, AutoCloseable {
+public class SqliteBoardRepository implements BoardRepository, ProjectRepository, AutoCloseable {
     private final String jdbcUrl;
     private Connection connection;
 
@@ -77,9 +80,23 @@ public class SqliteBoardRepository implements BoardRepository, AutoCloseable {
                         FOREIGN KEY(column_id) REFERENCES board_columns(id) ON DELETE CASCADE
                     );
                 """);
+
+                stmt.execute("""
+                    CREATE TABLE IF NOT EXISTS projects (
+                        id TEXT PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        description TEXT,
+                        status TEXT NOT NULL,
+                        priority TEXT NOT NULL,
+                        due_date TEXT,
+                        created_at TEXT NOT NULL,
+                        updated_at TEXT NOT NULL
+                    );
+                """);
             }
 
             seedDefaultBoardIfEmpty(conn);
+            seedDefaultProjectIfEmpty(conn);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to initialize SQLite database schema", e);
         }
@@ -455,6 +472,146 @@ public class SqliteBoardRepository implements BoardRepository, AutoCloseable {
         } catch (SQLException e) {
             throw new RuntimeException("Error deleting column " + columnId, e);
         }
+    }
+
+    private void seedDefaultProjectIfEmpty(Connection conn) throws SQLException {
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM projects")) {
+            if (rs.next() && rs.getInt(1) == 0) {
+                String now = Instant.now().toString();
+                try (PreparedStatement ps = conn.prepareStatement("""
+                    INSERT INTO projects (id, name, description, status, priority, due_date, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """)) {
+                    ps.setString(1, UUID.randomUUID().toString());
+                    ps.setString(2, "OrganizApp workspace");
+                    ps.setString(3, "Personal home, Kanban board, and project list for this first version.");
+                    ps.setString(4, ProjectStatus.ACTIVE.name());
+                    ps.setString(5, Priority.HIGH.name());
+                    ps.setString(6, null);
+                    ps.setString(7, now);
+                    ps.setString(8, now);
+                    ps.executeUpdate();
+                }
+            }
+        }
+    }
+
+    @Override
+    public synchronized List<Project> listProjects() {
+        try {
+            Connection conn = getConnection();
+            List<Project> projects = new ArrayList<>();
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery(
+                         "SELECT id, name, description, status, priority, due_date, created_at, updated_at " +
+                         "FROM projects ORDER BY created_at ASC")) {
+                while (rs.next()) {
+                    projects.add(mapProject(rs));
+                }
+            }
+            return projects;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error listing projects", e);
+        }
+    }
+
+    @Override
+    public synchronized Optional<Project> getProject(String projectId) {
+        try {
+            Connection conn = getConnection();
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT id, name, description, status, priority, due_date, created_at, updated_at " +
+                    "FROM projects WHERE id = ?")) {
+                ps.setString(1, projectId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        return Optional.of(mapProject(rs));
+                    }
+                }
+            }
+            return Optional.empty();
+        } catch (SQLException e) {
+            throw new RuntimeException("Error fetching project " + projectId, e);
+        }
+    }
+
+    @Override
+    public synchronized Project createProject(Project project) {
+        try {
+            Connection conn = getConnection();
+            try (PreparedStatement ps = conn.prepareStatement("""
+                INSERT INTO projects (id, name, description, status, priority, due_date, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """)) {
+                bindProject(ps, project);
+                ps.executeUpdate();
+            }
+            return project;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error creating project", e);
+        }
+    }
+
+    @Override
+    public synchronized Project updateProject(Project project) {
+        try {
+            Connection conn = getConnection();
+            try (PreparedStatement ps = conn.prepareStatement("""
+                UPDATE projects
+                SET name = ?, description = ?, status = ?, priority = ?, due_date = ?, updated_at = ?
+                WHERE id = ?
+            """)) {
+                ps.setString(1, project.name());
+                ps.setString(2, project.description());
+                ps.setString(3, project.status().name());
+                ps.setString(4, project.priority().name());
+                ps.setString(5, project.dueDate());
+                ps.setString(6, Instant.now().toString());
+                ps.setString(7, project.id());
+                ps.executeUpdate();
+            }
+            return getProject(project.id()).orElse(project);
+        } catch (SQLException e) {
+            throw new RuntimeException("Error updating project " + project.id(), e);
+        }
+    }
+
+    @Override
+    public synchronized boolean deleteProject(String projectId) {
+        try {
+            Connection conn = getConnection();
+            try (PreparedStatement ps = conn.prepareStatement("DELETE FROM projects WHERE id = ?")) {
+                ps.setString(1, projectId);
+                return ps.executeUpdate() > 0;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error deleting project " + projectId, e);
+        }
+    }
+
+    private Project mapProject(ResultSet rs) throws SQLException {
+        return new Project(
+            rs.getString("id"),
+            rs.getString("name"),
+            rs.getString("description"),
+            ProjectStatus.fromString(rs.getString("status")),
+            Priority.fromString(rs.getString("priority")),
+            rs.getString("due_date"),
+            Instant.parse(rs.getString("created_at")),
+            Instant.parse(rs.getString("updated_at"))
+        );
+    }
+
+    private void bindProject(PreparedStatement ps, Project project) throws SQLException {
+        ps.setString(1, project.id());
+        ps.setString(2, project.name());
+        ps.setString(3, project.description());
+        ps.setString(4, project.status().name());
+        ps.setString(5, project.priority().name());
+        ps.setString(6, project.dueDate());
+        ps.setString(7, project.createdAt().toString());
+        ps.setString(8, project.updatedAt().toString());
     }
 
     @Override
